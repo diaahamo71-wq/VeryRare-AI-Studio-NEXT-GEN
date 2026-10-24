@@ -57,3 +57,10 @@ Tests were added for timeline validation and segment rendering, but they have **
 ## AI audio engineering roadmap
 
 See [AI audio engineering contract](docs/AI_AUDIO_ENGINEERING_CONTRACT.md) for the reference-song workflow, plugin safety rules, timeline schema and acceptance gates. Reference-to-vocal matching, a timeline editor UI, automatic harmonizer/pitch correction, VST3 latency compensation and Windows integration testing remain unfinished.
+
+
+### WAV / MP3 import and VST3 effects
+
+The local UI accepts WAV and MP3 uploads. MP3 files are decoded locally to a working 24-bit PCM WAV copy; the original upload is not modified and audio is not sent to cloud services. MP3 decoding uses the `miniaudio` Python package listed in `requirements.txt`.
+
+Use **Scan installed VST3 plugins** in the time-local effects panel to discover plugins in the standard Windows VST3 folder. A compatible installed VST3 effect such as a Valhalla reverb may then be selected for a timed segment. Plugin compatibility depends on Pedalboard and the plugin; third-party plugins are not sandboxed, so use only trusted plugins and test with a copy of your audio. Plugins installed in non-standard folders are not automatically found by this UI version.
