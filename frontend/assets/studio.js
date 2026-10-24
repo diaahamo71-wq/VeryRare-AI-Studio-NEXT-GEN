@@ -179,7 +179,7 @@ function renderTimelineEventList() {
     const row = document.createElement("div"); row.className = "timeline-event";
     const description = document.createElement("div");
     const title = document.createElement("strong");
-    title.textContent = event.effect_kind === "vst3" ? ("VST3 · " + (event.plugin_path || "plugin").split(/[\\/]/).pop().replace(/\\.vst3$/i, "")) : ({builtin_telephone:"Telephone / radio",builtin_reverb:"Reverb",builtin_delay:"Delay / echo",builtin_eq:"EQ / filtered tone",builtin_compressor:"Compressor"}[event.effect_kind] || event.effect_kind);
+    title.textContent = event.effect_kind === "vst3" ? ("VST3 · " + (event.plugin_path || "plugin").split(/[\\/]/).pop().replace(/\.vst3$/i, "")) : ({builtin_telephone:"Telephone / radio",builtin_reverb:"Reverb",builtin_delay:"Delay / echo",builtin_eq:"EQ / filtered tone",builtin_compressor:"Compressor"}[event.effect_kind] || event.effect_kind);
     const detail = document.createElement("p");
     detail.textContent = event.start_seconds.toFixed(2) + "–" + event.end_seconds.toFixed(2) + " sec · wet " + Math.round(event.wet * 100) + "% · fades " + event.fade_in_seconds + "/" + event.fade_out_seconds + " sec";
     description.append(title, detail);
