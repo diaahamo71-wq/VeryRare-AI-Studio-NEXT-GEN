@@ -4,7 +4,9 @@ The repository now includes a first functional UI/API pass. This is an executabl
 
 ## Start the UI (Windows 11)
 
-Install Python 3.11 or 3.12 and run from the repository folder:
+**Simplest route:** double-click `setup_windows.bat` once, then `start_studio.bat`. Install Python 3.11 or 3.12 first. The setup script installs dependencies into a project-local virtual environment; the launcher binds the web server to 127.0.0.1 only.
+
+Manual route from the repository folder:
 
 ```powershell
 py -3.11 -m venv .venv
