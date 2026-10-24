@@ -395,8 +395,8 @@ api("/api/health").then(data => {
 }).catch(() => { $("health-text").textContent = "Local engine unavailable"; });
 
 
-// Local, realtime browser audition. This graph never uploads or overwrites source files.
-const livePreview = { context: null, source: null, objectUrls: {}, enabled: false, nodes: [] };
+// Local realtime audition. Files remain in this browser; no upload or source overwrite.
+const livePreview = { context: null, source: null, objectUrls: {}, enabled: false, comparingDry: false, nodes: [] };
 function liveStatus(message) { const el = $("live-preview-status"); if (el) el.textContent = message; }
 function liveFile() {
   const which = $("live-preview-track")?.value || "vocal";
@@ -416,8 +416,8 @@ function loadLivePreviewFile() {
   livePreview.objectUrls[which] = URL.createObjectURL(file);
   audio.src = livePreview.objectUrls[which]; audio.load();
   $("live-preview-enable").disabled = false;
-  liveStatus("Local preview: " + file.name + ". Press play; changes apply while audio is playing.");
-  if (livePreview.enabled) rebuildLiveGraph();
+  liveStatus("Local preview: " + file.name + ". Press play, then adjust controls while it plays.");
+  if (livePreview.enabled && !livePreview.comparingDry) rebuildLiveGraph();
 }
 function liveNode(node) { livePreview.nodes.push(node); return node; }
 function makeImpulse(context, seconds = 2.8, decay = 2.4) {
@@ -429,17 +429,19 @@ function makeImpulse(context, seconds = 2.8, decay = 2.4) {
   }
   return impulse;
 }
-function rebuildLiveGraph() {
-  if (!livePreview.context || !livePreview.source || !livePreview.enabled) return;
-  const ctx = livePreview.context;
-  try { livePreview.source.disconnect(); } catch (_) {}
+function disconnectLiveGraph() {
+  if (livePreview.source) { try { livePreview.source.disconnect(); } catch (_) {} }
   livePreview.nodes.forEach(node => { try { node.disconnect(); } catch (_) {} });
   livePreview.nodes = [];
+}
+function rebuildLiveGraph() {
+  if (!livePreview.context || !livePreview.source || !livePreview.enabled || livePreview.comparingDry) return;
+  const ctx = livePreview.context;
+  disconnectLiveGraph();
   const preGain = liveNode(ctx.createGain());
   preGain.gain.value = Math.pow(10, Number($("live-level").value) / 20);
   const highpass = liveNode(ctx.createBiquadFilter());
-  highpass.type = "highpass";
-  highpass.frequency.value = Number($("highpass")?.value || 80);
+  highpass.type = "highpass"; highpass.frequency.value = Number($("highpass")?.value || 80);
   const presence = liveNode(ctx.createBiquadFilter());
   presence.type = "peaking"; presence.frequency.value = 3200; presence.Q.value = 0.8;
   presence.gain.value = Number($("presence")?.value || 0);
@@ -450,6 +452,9 @@ function rebuildLiveGraph() {
   const dry = liveNode(ctx.createGain());
   const wet = liveNode(ctx.createGain());
   const master = liveNode(ctx.createGain());
+  const limiter = liveNode(ctx.createDynamicsCompressor());
+  limiter.threshold.value = -3; limiter.knee.value = 2; limiter.ratio.value = 12;
+  limiter.attack.value = 0.003; limiter.release.value = 0.12;
   const amount = Number($("live-wet").value) / 100;
   const effect = $("live-preview-effect").value;
   dry.gain.value = effect === "clean" ? 1 : Math.cos(amount * Math.PI / 2);
@@ -458,31 +463,35 @@ function rebuildLiveGraph() {
   preGain.connect(highpass); highpass.connect(presence); presence.connect(comp);
   comp.connect(dry); dry.connect(master);
   if (effect === "telephone") {
-    const band = liveNode(ctx.createBiquadFilter()); band.type = "bandpass"; band.frequency.value = 1550; band.Q.value = 0.65;
-    const shaper = liveNode(ctx.createWaveShaper()); const curve = new Float32Array(2048);
+    const band = liveNode(ctx.createBiquadFilter());
+    band.type = "bandpass"; band.frequency.value = 1550; band.Q.value = 0.65;
+    const shaper = liveNode(ctx.createWaveShaper());
+    const curve = new Float32Array(2048);
     for (let i = 0; i < curve.length; i++) { const x = i * 2 / (curve.length - 1) - 1; curve[i] = Math.tanh(2.2 * x) / Math.tanh(2.2); }
     shaper.curve = curve; shaper.oversample = "2x";
-    comp.connect(band); band.connect(shaper); shaper.connect(wet);
+    const tone = liveNode(ctx.createBiquadFilter()); tone.type = "lowpass"; tone.frequency.value = Number($("live-tone").value);
+    comp.connect(band); band.connect(shaper); shaper.connect(tone); tone.connect(wet);
   } else if (effect === "reverb" || effect === "dreamcore") {
-    const convolver = liveNode(ctx.createConvolver()); convolver.buffer = makeImpulse(ctx, effect === "dreamcore" ? 4.2 : 2.6, effect === "dreamcore" ? 1.8 : 2.8);
+    const tail = Number($("live-tail").value);
+    const convolver = liveNode(ctx.createConvolver());
+    convolver.buffer = makeImpulse(ctx, tail, effect === "dreamcore" ? 1.8 : 2.8);
     if (effect === "dreamcore") {
-      const lowpass = liveNode(ctx.createBiquadFilter()); lowpass.type = "lowpass"; lowpass.frequency.value = 7200;
+      const lowpass = liveNode(ctx.createBiquadFilter()); lowpass.type = "lowpass"; lowpass.frequency.value = Number($("live-tone").value);
       comp.connect(lowpass); lowpass.connect(convolver);
     } else comp.connect(convolver);
     convolver.connect(wet);
-  } else if (effect === "delay") {
-    const delay = liveNode(ctx.createDelay(1.5)); delay.delayTime.value = Number($("delay-time")?.value || 260) / 1000;
-    const feedback = liveNode(ctx.createGain()); feedback.gain.value = 0.28;
+  } else if (effect === "delay" || effect === "dreamcore") {
+    const delay = liveNode(ctx.createDelay(1.5));
+    delay.delayTime.value = Number($("delay-time")?.value || 260) / 1000;
+    const feedback = liveNode(ctx.createGain());
+    feedback.gain.value = Math.min(0.65, Number($("live-feedback").value) / 100);
     comp.connect(delay); delay.connect(feedback); feedback.connect(delay); delay.connect(wet);
-  } else {
-    comp.connect(wet); wet.gain.value = 0;
+  } else if (effect !== "telephone") {
+    comp.connect(wet);
+    if (effect === "clean") wet.gain.value = 0;
   }
-  if (effect === "dreamcore") {
-    const delay = liveNode(ctx.createDelay(1.5)); delay.delayTime.value = 0.32;
-    const feedback = liveNode(ctx.createGain()); feedback.gain.value = 0.18;
-    wet.connect(delay); delay.connect(feedback); feedback.connect(delay); delay.connect(master);
-  } else wet.connect(master);
-  master.connect(ctx.destination);
+  wet.connect(master);
+  master.connect(limiter); limiter.connect(ctx.destination);
 }
 async function enableLivePreview() {
   const {file} = liveFile();
@@ -496,38 +505,65 @@ async function enableLivePreview() {
       livePreview.source = livePreview.context.createMediaElementSource(audio);
     }
     await livePreview.context.resume();
-    livePreview.enabled = true; rebuildLiveGraph();
+    livePreview.enabled = true; livePreview.comparingDry = false;
+    rebuildLiveGraph();
     $("live-preview-bypass").disabled = false;
+    $("live-preview-ab").disabled = false;
     $("live-preview-enable").textContent = "Realtime effects enabled ✓";
-    liveStatus("Realtime effects are active. Change the effect or amount while playback continues.");
+    $("live-preview-ab").textContent = "Compare A/B (dry)";
+    liveStatus("Effects active. Use Compare A/B to switch instantly between the source and processed sound.");
   } catch (error) { liveStatus("Realtime preview error: " + error.message); }
 }
 function bypassLivePreview() {
   if (!livePreview.context || !livePreview.source) return;
-  livePreview.enabled = false;
-  try { livePreview.source.disconnect(); } catch (_) {}
+  livePreview.enabled = false; livePreview.comparingDry = false;
+  disconnectLiveGraph();
   livePreview.source.connect(livePreview.context.destination);
-  livePreview.nodes.forEach(node => { try { node.disconnect(); } catch (_) {} });
-  livePreview.nodes = [];
   $("live-preview-enable").textContent = "Enable realtime effects";
   $("live-preview-bypass").disabled = true;
-  liveStatus("Effects bypassed. Audio plays cleanly; enable effects to audition again.");
+  $("live-preview-ab").disabled = true;
+  $("live-preview-ab").textContent = "Compare A/B";
+  liveStatus("Effects bypassed. Enable realtime effects to return to processed playback.");
+}
+function toggleLiveAB() {
+  if (!livePreview.enabled || !livePreview.source) return;
+  livePreview.comparingDry = !livePreview.comparingDry;
+  disconnectLiveGraph();
+  if (livePreview.comparingDry) {
+    livePreview.source.connect(livePreview.context.destination);
+    $("live-preview-ab").textContent = "A/B: DRY (switch to wet)";
+    liveStatus("A/B comparison: dry source. Press the same button to hear the processed version.");
+  } else {
+    rebuildLiveGraph();
+    $("live-preview-ab").textContent = "A/B: WET (switch to dry)";
+    liveStatus("A/B comparison: processed sound.");
+  }
 }
 if ($("live-preview-enable")) {
   $("live-preview-enable").addEventListener("click", enableLivePreview);
   $("live-preview-bypass").addEventListener("click", bypassLivePreview);
-  $("live-preview-track").addEventListener("change", loadLivePreviewFile);
-  $("live-preview-effect").addEventListener("change", () => { if (livePreview.enabled) rebuildLiveGraph(); });
-  $("live-wet").addEventListener("input", () => {
-    $("live-wet-out").textContent = $("live-wet").value + "%";
-    if (livePreview.enabled) rebuildLiveGraph();
+  $("live-preview-ab").addEventListener("click", toggleLiveAB);
+  $("live-preview-track").addEventListener("change", () => {
+    if (livePreview.enabled) bypassLivePreview();
+    loadLivePreviewFile();
   });
-  $("live-level").addEventListener("input", () => {
-    $("live-level-out").textContent = $("live-level").value + " dB";
-    if (livePreview.enabled) rebuildLiveGraph();
+  $("live-preview-effect").addEventListener("change", () => { if (livePreview.enabled && !livePreview.comparingDry) rebuildLiveGraph(); });
+  const liveRanges = [
+    ["live-wet", "live-wet-out", v => v + "%"],
+    ["live-level", "live-level-out", v => v + " dB"],
+    ["live-tail", "live-tail-out", v => Number(v).toFixed(1) + " s"],
+    ["live-feedback", "live-feedback-out", v => v + "%"],
+    ["live-tone", "live-tone-out", v => (Number(v) / 1000).toFixed(1) + " kHz"]
+  ];
+  liveRanges.forEach(([inputId, outputId, format]) => {
+    $(inputId).addEventListener("input", () => {
+      $(outputId).textContent = format($(inputId).value);
+      if (livePreview.enabled && !livePreview.comparingDry) rebuildLiveGraph();
+    });
+    $(outputId).textContent = format($(inputId).value);
   });
   ["highpass", "presence", "compression", "threshold", "delay-time"].forEach(id => {
-    $(id)?.addEventListener("input", () => { if (livePreview.enabled) rebuildLiveGraph(); });
+    $(id)?.addEventListener("input", () => { if (livePreview.enabled && !livePreview.comparingDry) rebuildLiveGraph(); });
   });
   ["vocal-file", "beat-file"].forEach(id => $(id)?.addEventListener("change", () => {
     const current = $("live-preview-track").value;
