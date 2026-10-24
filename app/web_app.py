@@ -34,6 +34,11 @@ app = FastAPI(
 app.mount("/assets", StaticFiles(directory=str(UI_DIR / "assets"), check_dir=False), name="assets")
 
 
+class PlanRequest(BaseModel):
+    prompt: str = Field(min_length=3, max_length=1200)
+    allow_cloud_fallback: bool = False
+
+
 class MixRequest(BaseModel):
     vocal_file: str = Field(min_length=1, max_length=200)
     beat_file: str = Field(min_length=1, max_length=200)
@@ -199,6 +204,30 @@ def audio_file(filename: str) -> FileResponse:
     if path.suffix.lower() != ".wav":
         raise HTTPException(status_code=415, detail="Only WAV previews are served.")
     return FileResponse(path, media_type="audio/wav", filename=path.name)
+
+
+@app.post("/api/plan")
+def plan_effects(request: PlanRequest) -> dict:
+    """Ask the configured text planner for an advisory effect plan; never executes it."""
+    from app.agent_router import AgentConfig, plan_with_agent
+
+    config = AgentConfig(
+        mode="auto",
+        local_model=os.environ.get("VERYRARE_LOCAL_MODEL", "gemma3:4b"),
+        cloud_model=os.environ.get("VERYRARE_CLOUD_MODEL", "gemini-2.5-flash"),
+        allow_cloud=request.allow_cloud_fallback,
+    )
+    try:
+        plan = plan_with_agent(request.prompt, config)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Planner failed: {type(exc).__name__}: {exc}") from exc
+    return {
+        "planned": bool(plan.get("agent") not in {"local-unavailable"}),
+        "executed": False,
+        "cloud_fallback_enabled": request.allow_cloud_fallback,
+        "plan": plan,
+        "notice": "Advisory plan only. No audio was uploaded and no effects were executed by this endpoint.",
+    }
 
 
 @app.get("/api/capabilities")
