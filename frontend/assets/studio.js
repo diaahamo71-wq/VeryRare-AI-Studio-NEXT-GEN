@@ -379,6 +379,16 @@ async function loadCapabilities() {
     });
   } catch (error) { $("capabilities").textContent = "Could not load the effects inventory: " + error.message; }
 }
+document.querySelectorAll(".workflow-step").forEach(step => {
+  step.addEventListener("click", () => {
+    document.querySelectorAll(".workflow-step").forEach(item => {
+      const active = item === step;
+      item.classList.toggle("current", active);
+      if (active) item.setAttribute("aria-current", "step");
+      else item.removeAttribute("aria-current");
+    });
+  });
+});
 const sections = {studio:"studio-section",effects:"effects-section",activity:"activity-section"};
 document.querySelectorAll("[data-section]").forEach(button => button.addEventListener("click", () => {
   Object.entries(sections).forEach(([key, id]) => $(id).classList.toggle("hidden", key !== button.dataset.section));
