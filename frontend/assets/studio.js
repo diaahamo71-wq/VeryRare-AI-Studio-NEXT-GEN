@@ -1,4 +1,4 @@
-const state = { vocal: null, beat: null, renders: [], timelineEvents: [] };
+const state = { vocal: null, beat: null, beatB: null, renders: [], timelineEvents: [] };
 const $ = (id) => document.getElementById(id);
 const fields = {
   "vocal-gain": ["vocal-gain-out", v => Number(v).toFixed(1) + " dB"],
@@ -25,9 +25,9 @@ function showMessage(text, kind = "") {
   el.textContent = text;
 }
 function updateActions() {
-  const canImport = $("vocal-file").files.length > 0 && $("beat-file").files.length > 0;
+  const canImport = $("vocal-file").files.length > 0 && $("beat-file").files.length > 0 && $("beat-b-file").files.length > 0;
   $("import-btn").disabled = !canImport;
-  $("render-btn").disabled = !(state.vocal && state.beat);
+  $("render-btn").disabled = !(state.vocal && state.beat && state.beatB);
   updateTimelineActions();
 }
 function showTrack(which, file) {
@@ -37,6 +37,7 @@ function showTrack(which, file) {
 }
 $("vocal-file").addEventListener("change", e => { if (e.target.files[0]) showTrack("vocal", e.target.files[0]); updateActions(); });
 $("beat-file").addEventListener("change", e => { if (e.target.files[0]) showTrack("beat", e.target.files[0]); updateActions(); });
+$("beat-b-file").addEventListener("change", e => { if (e.target.files[0]) showTrack("beat-b", e.target.files[0]); updateActions(); });
 async function api(url, options = {}) {
   const response = await fetch(url, options);
   const payload = await response.json().catch(() => ({}));
@@ -50,23 +51,27 @@ $("import-btn").addEventListener("click", async () => {
     const body = new FormData();
     body.append("vocal", $("vocal-file").files[0]);
     body.append("beat", $("beat-file").files[0]);
+    body.append("beat_b", $("beat-b-file").files[0]);
     const result = await api("/api/import", { method: "POST", body });
-    state.vocal = result.vocal; state.beat = result.beat;
+    state.vocal = result.vocal; state.beat = result.beat; state.beatB = result.beat_b;
     $("vocal-name").textContent = result.vocal.original_name;
     $("vocal-detail").textContent = metaText(result.vocal.analysis);
     $("vocal-state").textContent = "Imported";
     $("beat-name").textContent = result.beat.original_name;
     $("beat-detail").textContent = metaText(result.beat.analysis);
     $("beat-state").textContent = "Imported";
-    $("import-btn").innerHTML = "Tracks imported <span>✓</span>";
-    showMessage("Both tracks imported and analyzed successfully. You can now render a mix.", "success");
+    $("beat-b-name").textContent = result.beat_b.original_name;
+    $("beat-b-detail").textContent = metaText(result.beat_b.analysis);
+    $("beat-b-state").textContent = "Imported";
+    $("import-btn").innerHTML = "3 tracks imported <span>✓</span>";
+    showMessage("Vocal and both beats imported and analyzed. Choose Beat A or B for each render.", "success");
     updateActions();
   } catch (error) {
     showMessage(error.message, "error");
   } finally {
-    if (!state.vocal || !state.beat) {
-      button.disabled = !($("vocal-file").files.length && $("beat-file").files.length);
-      button.innerHTML = 'Import tracks <span>↗</span>';
+    if (!state.vocal || !state.beat || !state.beatB) {
+      button.disabled = !($("vocal-file").files.length && $("beat-file").files.length && $("beat-b-file").files.length);
+      button.innerHTML = 'Import 3 tracks <span>↗</span>';
     }
   }
 });
@@ -78,7 +83,7 @@ $("render-btn").addEventListener("click", async () => {
   button.disabled = true; button.innerHTML = '<span class="button-star">◌</span> Rendering…';
   showMessage("Processing locally. Longer WAV files may take a little time.");
   const request = {
-    vocal_file: state.vocal.file, beat_file: state.beat.file,
+    vocal_file: state.vocal.file, beat_file: ($("render-beat-choice").value === "beat-b" ? state.beatB.file : state.beat.file),
     vocal_gain_db: Number($("vocal-gain").value),
     beat_gain_db: Number($("beat-gain").value),
     highpass_hz: Number($("highpass").value),
@@ -149,7 +154,8 @@ async function scanPlugins() {
 }
 if ($("scan-plugins-btn")) $("scan-plugins-btn").addEventListener("click", scanPlugins);
 function selectedTimelineTrack() {
-  return $("timeline-track").value === "beat" ? state.beat : state.vocal;
+  const id = $("timeline-track").value;
+  return id === "beat-b" ? state.beatB : id === "beat" ? state.beat : state.vocal;
 }
 function timelineTrackId() {
   return $("timeline-track").value;
@@ -279,7 +285,7 @@ $("plan-btn").addEventListener("click", async () => {
   const button = $("plan-btn");
   const resultBox = $("plan-result");
   button.disabled = true; button.textContent = "Planning…";
-  resultBox.hidden = false; resultBox.textContent = "Asking the configured text planner. Audio files are not sent.";
+  resultBox.hidden = false; resultBox.textContent = "Asking the configured text planner. It receives your written brief, not the audio waveform; no audio is sent.";
   try {
     const response = await api("/api/plan", {
       method: "POST",
