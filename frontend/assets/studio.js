@@ -280,7 +280,7 @@ $("production-brief").addEventListener("input", () => {
 });
 $("plan-btn").disabled = true;
 $("plan-btn").addEventListener("click", async () => {
-  const userGoal = $("production-brief").value.trim();
+  const userGoal = $("production-brief").value.trim().slice(0, 800);
   if (userGoal.length < 3) return;
   const trackContext = state.vocal && state.beat && state.beatB
     ? "\nImported track metadata (the planner cannot hear the files):"
