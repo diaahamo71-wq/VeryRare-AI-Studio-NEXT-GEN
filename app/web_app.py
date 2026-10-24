@@ -16,8 +16,14 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
+import miniaudio
+import numpy as np
+import soundfile as sf
 
 from app.audio_engine import MixSettings, analyze_file, mix_tracks
+from app.automation_timeline import AutomationTimeline
+from app.automation_renderer import render_automation_timeline
+from app.vst3_host import scan_vst3_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 UI_DIR = ROOT / "frontend"
@@ -75,14 +81,17 @@ def _safe_workspace_file(name: str, *, must_exist: bool = True) -> Path:
 
 async def _save_upload(upload: UploadFile) -> dict:
     original = Path(upload.filename or "audio.wav").name
-    if Path(original).suffix.lower() != ".wav":
-        raise HTTPException(status_code=415, detail="For this MVP, upload WAV files only.")
+    suffix = Path(original).suffix.lower()
+    if suffix not in {".wav", ".mp3"}:
+        raise HTTPException(status_code=415, detail="Supported audio formats are WAV and MP3.")
     safe_stem = re.sub(r"[^A-Za-z0-9_-]+", "-", Path(original).stem).strip("-_")[:48] or "audio"
-    name = f"{safe_stem}-{uuid.uuid4().hex[:10]}.wav"
+    token = uuid.uuid4().hex[:10]
+    name = f"{safe_stem}-{token}.wav"
     target = _safe_workspace_file(name, must_exist=False)
+    upload_temp = _safe_workspace_file(f".upload-{token}{suffix}", must_exist=False)
     total = 0
     try:
-        with target.open("xb") as output:
+        with upload_temp.open("xb") as output:
             while True:
                 chunk = await upload.read(CHUNK_SIZE)
                 if not chunk:
@@ -92,19 +101,43 @@ async def _save_upload(upload: UploadFile) -> dict:
                     raise HTTPException(status_code=413, detail="Upload exceeds the 500 MiB limit.")
                 output.write(chunk)
         if total == 0:
-            target.unlink(missing_ok=True)
-            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-        # Decode now so corrupt/non-audio WAV files fail during import, not later.
+            raise HTTPException(status_code=400, detail="Uploaded audio file is empty.")
+        if suffix == ".mp3":
+            decoded = miniaudio.decode_file(
+                str(upload_temp), output_format=miniaudio.SampleFormat.FLOAT32,
+                nchannels=2, sample_rate=44100,
+            )
+            pcm = np.asarray(decoded.samples, dtype=np.float32).reshape(-1, decoded.nchannels)
+            if len(pcm) < 2 or not np.isfinite(pcm).all():
+                raise ValueError("Decoded MP3 contains no valid audio samples.")
+            sf.write(str(target), pcm, int(decoded.sample_rate), subtype="PCM_24")
+        else:
+            upload_temp.replace(target)
         metadata = analyze_file(target)
-        return {"file": name, "original_name": original, "bytes": total, "analysis": metadata}
+        return {"file": name, "original_name": original, "bytes": total, "analysis": metadata,
+                "converted_from": suffix[1:] if suffix == ".mp3" else None}
     except HTTPException:
         target.unlink(missing_ok=True)
         raise
     except Exception as exc:
         target.unlink(missing_ok=True)
-        raise HTTPException(status_code=422, detail=f"Could not read a valid WAV file: {type(exc).__name__}: {exc}") from exc
+        raise HTTPException(status_code=422, detail=f"Could not decode this audio file: {type(exc).__name__}: {exc}") from exc
     finally:
+        upload_temp.unlink(missing_ok=True)
         await upload.close()
+
+
+class AutomationRenderRequest(BaseModel):
+    track_file: str = Field(min_length=1, max_length=200)
+    track_id: str = Field(default="vocal", min_length=1, max_length=80)
+    timeline_json: str = Field(min_length=2, max_length=250_000)
+
+    @field_validator("track_file")
+    @classmethod
+    def validate_track_filename(cls, value: str) -> str:
+        if Path(value).name != value or value in {".", ".."} or "/" in value or chr(92) in value:
+            raise ValueError("Track reference must be a workspace file name, not a filesystem path.")
+        return value
 
 
 @app.get("/")
@@ -128,14 +161,25 @@ def health() -> dict:
 async def import_audio(
     vocal: Annotated[UploadFile, File()],
     beat: Annotated[UploadFile, File()],
+    beat_b: Annotated[UploadFile | None, File()] = None,
 ) -> dict:
-    vocal_result = await _save_upload(vocal)
+    """Import a vocal and one or two alternative beats; each source is stored separately."""
+    saved: list[dict] = []
     try:
+        vocal_result = await _save_upload(vocal)
+        saved.append(vocal_result)
         beat_result = await _save_upload(beat)
+        saved.append(beat_result)
+        response = {"vocal": vocal_result, "beat": beat_result}
+        if beat_b is not None and (beat_b.filename or "").strip():
+            beat_b_result = await _save_upload(beat_b)
+            saved.append(beat_b_result)
+            response["beat_b"] = beat_b_result
+        return response
     except Exception:
-        _safe_workspace_file(vocal_result["file"], must_exist=False).unlink(missing_ok=True)
+        for item in saved:
+            _safe_workspace_file(item["file"], must_exist=False).unlink(missing_ok=True)
         raise
-    return {"vocal": vocal_result, "beat": beat_result}
 
 
 @app.get("/api/analyze/{filename}")
@@ -229,6 +273,80 @@ def plan_effects(request: PlanRequest) -> dict:
         "notice": "Advisory plan only. No audio was uploaded and no effects were executed by this endpoint.",
     }
 
+
+@app.post("/api/render-timeline")
+def render_timeline(request: AutomationRenderRequest) -> dict:
+    """Render time-local built-in effects on one imported track; no cloud processing."""
+    track_path = _safe_workspace_file(request.track_file)
+    timeline = AutomationTimeline.model_validate_json(request.timeline_json)
+    output_name = f"VeryRare-Segment-{uuid.uuid4().hex[:10]}.wav"
+    output_path = _safe_workspace_file(output_name, must_exist=False)
+    try:
+        report = render_automation_timeline(
+            track_path, output_path, request.timeline_json, track_id=request.track_id,
+            allowed_plugin_paths=set(scan_vst3_paths()),
+        )
+        return {
+            "rendered": True,
+            "output_file": output_name,
+            "audio_url": f"/api/audio/{output_name}",
+            "report": report,
+        }
+    except Exception as exc:
+        output_path.unlink(missing_ok=True)
+        output_path.with_suffix(".automation-report.json").unlink(missing_ok=True)
+        raise HTTPException(status_code=422, detail=f"Automation render failed: {type(exc).__name__}: {exc}") from exc
+
+
+@app.get("/api/plugins")
+def list_installed_plugins() -> dict:
+    """List VST3 plugins found in standard Windows VST3 locations; loading is separate."""
+    paths = scan_vst3_paths()
+    return {
+        "plugins": [{"path": path, "name": Path(path).stem, "discovered": True, "loaded": False} for path in paths],
+        "note": "Discovery does not guarantee compatibility. Only load trusted plugins; plugins run locally and are not sandboxed.",
+    }
+
+
+
+@app.get("/api/plugin-catalog")
+def plugin_catalog() -> dict:
+    """Curated small free Windows VST3 packages from the developer's official page."""
+    items = [
+        {"id": "ultraverb", "name": "ULTRAVERB", "category": "Reverb", "zip_mib": 1.18,
+         "purpose": "Intimate ambience, spacious reverb and creative vocal tails.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+        {"id": "echo-atlas", "name": "ECHO ATLAS", "category": "Delay / echo", "zip_mib": 1.18,
+         "purpose": "Tape-like, reverse, diffuse and stereo echoes for timed vocal throws.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+        {"id": "chorus-bloom", "name": "CHORUS BLOOM", "category": "Chorus / pitch movement", "zip_mib": 1.22,
+         "purpose": "Subtle vocal width, micro-detune and dreamlike movement.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+        {"id": "dynamo-core", "name": "DYNAMO CORE", "category": "Compression", "zip_mib": 1.20,
+         "purpose": "Control vocal dynamics while retaining quiet phrases.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+        {"id": "spectrum-weave", "name": "SPECTRUM WEAVE", "category": "Dynamic EQ", "zip_mib": 1.24,
+         "purpose": "Tame harsh frequencies and shape a smoother vocal tone.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+        {"id": "vocal-pilot", "name": "VOCAL PILOT", "category": "Vocal level automation", "zip_mib": 1.16,
+         "purpose": "Phrase-level gain riding for more even, intimate vocals.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+        {"id": "analog-forge", "name": "Analog Forge", "category": "Saturation / lo-fi", "zip_mib": 12.46,
+         "purpose": "Warmth, cassette-like softness and creative distortion.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+    ]
+    return {
+        "plugins": items,
+        "source": "Official NORMSONIC downloads page",
+        "notice": "Sizes are published ZIP package sizes, not installed size. Download and install manually from the official site; this app does not silently download or install third-party executable code."
+    }
 
 @app.get("/api/capabilities")
 def capabilities() -> dict:
