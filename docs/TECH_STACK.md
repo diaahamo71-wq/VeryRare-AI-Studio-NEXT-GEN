@@ -1,41 +1,40 @@
-# Technology selection — free-first, Windows-first
+# Technology selection — prompt-driven audio engineering
 
-Research snapshot: 24 October 2026. Recheck versions, model licenses, and third-party terms before packaging a release.
+Research snapshot: 24 October 2026. Recheck versions, model licenses, plugin licenses, and third-party terms before release.
 
-## Decision
+## Product scope (corrected)
 
-Use a **local-first Python desktop application** with a deterministic audio engine and a controlled agent workflow. Do not require a paid API, cloud GPU, subscription, or online account for the baseline product.
+The user supplies an **already-converted vocal WAV and its instrumental/beat** (or a full song plus the relevant stems). VeryRare AI Studio does **not** convert voices, train voice models, or separate vocals by default. Its job is professional audio engineering: analyze the supplied files, interpret the user's production prompt, create a deliberate effects/mix/master plan, render the complete song, validate it, and present A/B alternatives.
 
-## Selected baseline
+## Recommended free-first architecture
 
-| Area | Selection | Why | Constraints |
-|---|---|---|---|
-| Agent orchestration | [LangGraph](https://github.com/langchain-ai/langgraph) | Open-source, stateful workflows, checkpoints, and human approval gates | The model is not the audio engine; every tool must be explicitly registered and schema-validated |
-| Local LLM runtime | [Ollama for Windows](https://ollama.com/download/windows) | Local HTTP API; no per-request API bill | CPU inference may be slow; model quality is limited by available RAM and model size |
-| Default local model candidate | [Qwen3 4B Q4_K_M](https://ollama.com/library/qwen3:4b-q4_K_M) | Listed at about 2.6 GB, Apache-2.0 model variant; plausible starting point for a 16 GB PC | This is a candidate to benchmark, not a guarantee of high-end reasoning or fast inference. Keep model choice configurable |
-| Audio metadata / conversion / filters | [FFmpeg](https://ffmpeg.org/) + `ffprobe` | Mature command-line tools, codecs, filter graphs, and measurable loudness processing | Bundle only a correctly licensed build; FFmpeg's license depends on build options and enabled components |
-| Audio file I/O | `soundfile` | Read/write WAV and other supported formats without a large DAW runtime | Validate codec support and malformed files |
-| Signal processing | `numpy` + `scipy` | Local, reproducible DSP building blocks | DSP parameters need tests; don't claim that arbitrary settings are professionally tuned |
-| Audio feature analysis | `librosa` | Tempo, onset, spectral and related analysis features | Use selectively; avoid expensive analysis when a lightweight measurement is enough |
-| Loudness validation | [pyloudnorm](https://pypi.org/project/pyloudnorm/) plus FFmpeg `loudnorm` | LUFS measurement and loudness normalization workflows | True-peak, clipping, and loudness targets must be reported separately; loudness normalization is not mastering by itself |
-| Reference matching / mastering | [Matchering](https://github.com/sergree/matchering) as an optional adapter | Open-source reference-based matching of spectrum, RMS, peak and stereo width | GPLv3; keep optional and document the license. A poor reference can produce a poor result |
-| Vocal separation | [Ultimate Vocal Remover GUI](https://github.com/Anjok07/ultimatevocalremovergui) / UVR models as an optional adapter | Strong practical ecosystem with multiple separation model families | Code is MIT, but each model/weight can have separate terms. Separation artifacts are possible; compare candidate stems before conversion |
-| Voice conversion | Existing user-selected [Applio](https://applio.org/) or [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) model through an isolated adapter | Reuses the user's existing workflow and keeps conversion engine swappable | Code license does not automatically settle the terms of downloaded weights, datasets, or voice consent. Keep it optional and out of the core dependency set |
-| Desktop UI | Python + PySide6 candidate | Native-feeling Windows UI and direct integration with Python audio tools | Verify Qt/PySide license obligations for the exact distribution model before packaging |
-| Automated checks | `pytest` + generated synthetic audio fixtures | Repeatable regression tests without exposing private recordings | Never commit the user's song or voice dataset as a test fixture |
+| Area | Selection | Purpose and caveats |
+|---|---|---|
+| Agent workflow | [LangGraph](https://github.com/langchain-ai/langgraph) | Stateful specialist workflow, checkpoints, approval gates. The LLM proposes settings; registered tools perform audio processing. |
+| Local LLM | [Ollama for Windows](https://ollama.com/download/windows) + configurable Qwen3 4B Q4_K_M candidate | No API fee or automatic upload. About 2.6 GB published for this quantization; CPU speed and reasoning quality must be benchmarked on the target PC. This is a candidate, not a claim of world-class music judgment. |
+| File inspection and deterministic renders | [FFmpeg](https://ffmpeg.org/) + `ffprobe` | Decode, align, route, apply supported filters, export, and inspect metadata. Preserve originals. Verify the exact build's license flags. |
+| Audio I/O / DSP | `soundfile`, `numpy`, `scipy` | Read/write, metering, alignment checks, and deterministic operations. |
+| Loudness analysis | `pyloudnorm` + FFmpeg `loudnorm` | Measure/adjust loudness and report peak/true-peak limitations clearly. Loudness normalization alone is not mastering. |
+| Free plugin suite | [Venn Audio Free Suite](https://www.vennaudio.com/free-suite/) | Free Windows VST3 suite including EQ, compressor, delay, reverb, clipper and meters. Freeware, not necessarily open source; check terms before redistributing. |
+| Dynamic EQ | [TDR Nova](https://www.tokyodawn.ru/tdr-nova/) | Free EQ/dynamic EQ for resonances and controlled tonal shaping; optional plugin integration. |
+| Creative saturation / color | [Airwindows](https://www.airwindows.com/) | Large collection of free audio effects; choose a small tested subset rather than installing everything. Check the current build format and each license. |
+| Additional open-source effects | [LSP Plugins](https://lsp-plug.in/) | Open-source plugin collection; confirm Windows binary format and plugin-host compatibility for each chosen effect. |
+| Reference-based mastering | [Matchering](https://github.com/sergree/matchering) optional | Useful when the user provides an approved reference track; GPLv3 and reference-dependent. Not a substitute for an intentional mix. |
+| Test harness | `pytest` + generated synthetic audio | Test routing, timing, silence, clipping, sample rate, export integrity, parameter bounds and repeatability without committing personal recordings. |
+| Desktop shell | Python desktop app (framework choice remains a separate implementation decision) | The UI must support audio audition, prompt editing, processing plans, plugin-chain review, A/B playback, undo/versions, and exports. |
 
-## Why not use a cloud model as the default?
+## Plugin-hosting decision
 
-Cloud free tiers and credits can change, require accounts, impose limits, or later become paid. The baseline must therefore work without them. A provider adapter may be added later only if the user explicitly opts in and the UI displays the provider, data sent, and any cost/limit uncertainty before upload.
+Do not claim VST3 plugins are integrated merely because plugin names are in a list. First implement and test a reliable offline rendering path. A plugin host can be a dedicated engine or a supported external-host adapter, depending on Windows compatibility, plugin formats, automation, crash isolation, and license review. Native FFmpeg/DSP operations remain available as a dependable fallback. Keep plugin presets and parameter changes explicit, versioned, and reproducible.
 
-## Why not let agents generate arbitrary shell commands?
+## Prompt-driven effects — not random presets
 
-The LLM should choose among approved audio operations, not write and execute arbitrary commands. Each operation has a typed schema, bounded parameter ranges, a timeout, a cancellation path, a declared input/output path, and a validation step. Preserve the original file and render to a new version.
+Translate the user's prompt into a structured mix brief: target emotion/style, vocal placement, ambience, delay rhythm, stereo width, saturation, dynamics, references, and things to avoid. For every proposed effect, the plan must state its purpose, target track/bus, key parameters, wet/dry range, automation intent if any, and why it supports the prompt. Use conservative starting values, preview changes, and reject parameter combinations outside validated ranges. Do not insert every effect by default.
 
-## Hardware reality
+## Hardware and privacy
 
-The target PC has 16 GB RAM and a very weak 1 GB GPU. Plan for CPU-first audio processing and small local language models. Large speech separation and voice-conversion neural models may be slow or infeasible locally; those tasks must be optional and can run in an explicitly approved free cloud notebook when one is available, with no guarantee of availability or speed. The app must never silently upload audio.
+The target PC is Windows 11, 16 GB RAM, and a very weak 1 GB GPU. Plan for CPU-first processing. Most classic DSP/plugin effects should be feasible; large neural models may not be. The base workflow must not need a cloud service. Do not upload audio without explicit approval, and never require paid APIs or subscriptions.
 
-## License gate before release
+## License gate
 
-Create a third-party notices inventory covering application dependencies, FFmpeg build flags, UI framework, model code, model weights, VSTs, and any bundled assets. Do not assume an open-source repository means every model weight or pretrained checkpoint is cleared for commercial use.
+Keep a third-party notices inventory for application dependencies, FFmpeg build flags, plugins, plugin SDKs, presets, and models. Free-to-use does not always mean open-source or redistributable. Do not bundle freeware plugins without checking the developer's distribution terms.
