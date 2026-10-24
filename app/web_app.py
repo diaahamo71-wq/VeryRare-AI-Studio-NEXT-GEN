@@ -15,7 +15,7 @@ from typing import Annotated
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.audio_engine import MixSettings, analyze_file, mix_tracks
 
@@ -47,6 +47,13 @@ class MixRequest(BaseModel):
     delay_mix: float = Field(default=0.0, ge=0, le=0.30)
     delay_ms: float = Field(default=260.0, ge=60, le=700)
     master_peak_dbfs: float = Field(default=-1.0, ge=-3, le=-0.1)
+
+    @field_validator("vocal_file", "beat_file")
+    @classmethod
+    def validate_workspace_filename(cls, value: str) -> str:
+        if Path(value).name != value or value in {".", ".."} or "/" in value or "\\\\" in value:
+            raise ValueError("Audio references must be workspace file names, not filesystem paths.")
+        return value
 
 
 def _safe_workspace_file(name: str, *, must_exist: bool = True) -> Path:
