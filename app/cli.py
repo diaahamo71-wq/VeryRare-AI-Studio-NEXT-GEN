@@ -39,6 +39,11 @@ def main() -> int:
     render.add_argument("--param", action="append", default=[], metavar="NAME=VALUE",
                         help="Plugin parameter; repeat as needed. Inspect plugin first.")
 
+    chain = sub.add_parser("vst3-chain", help="Render an explicit sequential VST3 effect-chain manifest")
+    chain.add_argument("--input", required=True, type=Path)
+    chain.add_argument("--output", required=True, type=Path)
+    chain.add_argument("--manifest", required=True, type=Path)
+
     plan = sub.add_parser("agent-plan", help="Generate an advisory effect plan; does not execute plugins")
     plan.add_argument("--prompt", required=True)
     plan.add_argument("--mode", choices=("auto", "local", "cloud"), default="auto")
@@ -86,6 +91,10 @@ def main() -> int:
             except ValueError:
                 parser.error(f"Parameter value must be numeric: {item!r}")
         print(json.dumps(render_vst3(args.input, args.output, args.plugin, params, args.wet), indent=2))
+        return 0
+    if args.command == "vst3-chain":
+        from app.plugin_chain import render_chain
+        print(json.dumps(render_chain(args.input, args.output, args.manifest), indent=2, ensure_ascii=False))
         return 0
     if args.command == "agent-plan":
         from app.agent_router import AgentConfig, plan_with_agent, save_plan
