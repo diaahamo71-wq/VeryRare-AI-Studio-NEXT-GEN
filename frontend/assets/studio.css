@@ -162,3 +162,11 @@ textarea:focus-visible,select:focus-visible,input[type=number]:focus-visible,inp
   .workflow-step span{font-size:9px}
 }
 @media(prefers-reduced-motion:reduce){.track-card:hover,.button:active{transform:none}}
+
+/* Dual-beat workflow */
+.source-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.beat-choice-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 26px;padding:13px 15px;border:1px solid var(--border,#34343f);border-radius:14px;background:var(--panel,#17171f)}
+.beat-choice-row label{font-weight:650;color:var(--text,#f4f2fa)}
+.beat-choice-row select{min-width:140px;padding:9px 12px;border:1px solid var(--border,#34343f);border-radius:9px;background:var(--surface,#111116);color:inherit}
+@media(max-width:980px){.source-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.source-grid{grid-template-columns:1fr}.beat-choice-row{align-items:stretch;flex-direction:column}.beat-choice-row select{width:100%}}
