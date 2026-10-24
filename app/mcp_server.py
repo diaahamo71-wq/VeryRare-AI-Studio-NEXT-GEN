@@ -90,8 +90,11 @@ def scan_vst3_plugins() -> list[dict[str, Any]]:
 
     Discovery is not a guarantee of compatibility. Use inspect_vst3_plugin to smoke-test.
     """
-    from app.plugin_scanner import scan_and_test
-    return scan_and_test()
+    # Discovery only: loading every installed plugin in this process can crash
+    # the MCP server. Smoke-test one explicitly selected plugin via inspect_vst3_plugin.
+    return [{"path": path, "discovered": True, "loaded": False,
+             "note": "Discovery only; inspect this plugin explicitly before use."}
+            for path in scan_vst3_paths()]
 
 
 @mcp.tool()
