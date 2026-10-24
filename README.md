@@ -7,7 +7,7 @@ A local-first audio engineering studio for already-converted vocal WAVs and inst
 - Local browser UI served by FastAPI on loopback: import WAVs, inspect basic measurements, adjust the built-in DSP controls, render a new 24-bit PCM WAV, play/download it, and inspect the measurement report.
 - Built-in deterministic DSP: high-pass, presence EQ, simple compression, short-tap room reverb, delay, track gain and a sample-peak ceiling.
 - Experimental Pedalboard VST3 adapter and sequential effect-chain tools. Compatibility is plugin-specific and has not yet been verified against the user's Windows plugins.
-- Local stdio MCP server for compatible MCP clients; optional text-only planner. The local UI does not currently connect its production-brief text to an AI planner.
+- Local stdio MCP server for compatible MCP clients; optional text-only planner. The UI can request an advisory plan from the local Ollama model first; cloud fallback is a separate explicit checkbox and sends prompt text only. Suggested plans do not execute effects.
 - XIAS-inspired UI quality guide: `docs/XIAS_UI_GUIDELINES.md`.
 
 ## Windows 11 quick start
@@ -30,7 +30,7 @@ Default audio workspace: `workspace/` inside the repository. To use another fold
 
 ## Important feature boundaries
 
-- The UI's Production Brief is currently a note only. It does not yet drive automatic AI effect planning or plugin execution.
+- The UI can request an advisory plan from the local-first text planner. It does not yet execute plugin chains or automatically transfer AI suggestions into mix controls.
 - Built-in reverb is a simple early-reflection-style tap model, not convolution reverb or a professional room simulator.
 - Peak limiting is not LUFS/true-peak mastering. The UI reports basic peak/RMS measurements, not subjective quality.
 - Auto-Tune, harmonizer, dereverb, denoising and other advanced processing require a separately verified implementation/plugin. They are not silently simulated by the built-in engine.
