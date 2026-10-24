@@ -36,14 +36,14 @@
           <div class="heading-chip"><span class="pulse"></span> Local engine <b>Ready</b></div>
         </div>
 
-        <div class="section-title"><div><span class="step">01</span><h2>Source tracks</h2></div><span class="muted">WAV · 24-bit recommended</span></div>
+        <div class="section-title"><div><span class="step">01</span><h2>Source tracks</h2></div><span class="muted">WAV or MP3 · imported as WAV</span></div>
         <div class="source-grid">
           <label class="track-card" for="vocal-file">
             <div class="track-card-top"><span class="track-icon vocal-icon">♬</span><span class="track-badge">VOCAL</span><span class="file-state" id="vocal-state">Not loaded</span></div>
             <div class="track-main"><strong id="vocal-name">Drop your converted vocal</strong><span id="vocal-detail">Already-converted vocal WAV</span></div>
             <div class="waveform vocal-wave" aria-hidden="true"></div>
-            <div class="track-bottom"><span>Choose WAV file</span><span class="plus">＋</span></div>
-            <input id="vocal-file" type="file" accept=".wav,audio/wav" hidden>
+            <div class="track-bottom"><span>Choose WAV / MP3 file</span><span class="plus">＋</span></div>
+            <input id="vocal-file" type="file" accept=".wav,.mp3,audio/wav,audio/mpeg" hidden>
           </label>
           <label class="track-card" for="beat-file">
             <div class="track-card-top"><span class="track-icon beat-icon">▤</span><span class="track-badge beat-badge">INSTRUMENTAL</span><span class="file-state" id="beat-state">Not loaded</span></div>
@@ -81,6 +81,7 @@
 
         <section class="timeline-panel" aria-labelledby="timeline-heading">
           <div class="panel-heading"><div><h3 id="timeline-heading">Time-local vocal effects</h3><p>Apply an effect only between selected timestamps. This renders the selected track, not the full vocal/beat mix.</p></div><span class="panel-symbol">⌁</span></div>
+          <div class="plugin-scan-row"><button id="scan-plugins-btn" class="button button-secondary" type="button">Scan installed VST3 plugins</button><span id="plugin-scan-status" class="muted">Valhalla and other installed VST3 effects can appear here.</span></div>
           <div class="timeline-form">
             <label>Track<select id="timeline-track"><option value="vocal">Converted vocal</option><option value="beat">Instrumental / beat</option></select></label>
             <label>Effect<select id="timeline-effect"><option value="builtin_telephone">Telephone / distant radio</option><option value="builtin_reverb">Reverb</option><option value="builtin_delay">Delay / echo</option><option value="builtin_eq">EQ / filtered tone</option><option value="builtin_compressor">Compressor</option></select></label>
