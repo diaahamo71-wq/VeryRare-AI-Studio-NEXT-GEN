@@ -1,14 +1,17 @@
-# VeryRare AI Studio — runnable audio-engine MVP
+# VeryRare AI Studio — runnable local audio-engine MVP
 
-This is the first executable foundation, not a claim of finished professional mastering.
+This is an executable foundation, not a claim of finished professional mastering.
 
 ## Scope
 
 - Input: **already-converted vocal WAV** + instrumental/beat WAV.
-- Local deterministic processing: vocal high-pass, gentle presence EQ, conservative compression, small room reverb, optional delay, track gains and peak ceiling.
-- Output: 24-bit PCM WAV plus a JSON measurement/settings report.
-- No voice conversion, no vocal separation, no cloud upload, no paid API.
-- The first version does not automatically align timing, time-stretch, detect song sections, host arbitrary VST plugins, or perform LUFS-target mastering. Listen to the render and compare it with the original before release.
+- Local deterministic DSP: vocal high-pass, presence EQ, compression, simple room reverb, delay, track gains and peak ceiling.
+- **VST3 hosting via Spotify Pedalboard:** inspect a plugin, discover common Windows VST3 folders, render a WAV through one plugin, or run a sequential chain from a reviewed JSON manifest.
+- **AI planning:** local-first Ollama text planner; optional Gemini cloud text planner only with explicit `--allow-cloud` and a user-supplied `GEMINI_API_KEY`. Audio is not uploaded by the agent router.
+- Output: 24-bit PCM WAV plus JSON measurement/render report.
+- No voice conversion, no vocal separation, no automatic plugin downloads, no arbitrary LLM-generated code or shell commands.
+- The VST3 adapter is an early offline MVP: no plugin GUI, MIDI/instrument rendering in the chain, sidechain routing, latency compensation, real-time monitoring, or section automation yet. Third-party plugins are not sandboxed in this version; only load trusted plugins.
+- Discovered/loaded plugins are not automatically guaranteed to sound good or be compatible. Listen to every render and compare with bypass before release.
 
 ## Windows 11 setup
 
@@ -21,21 +24,57 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## Run
-
-Analyze a WAV:
+## Existing mixer
 
 ```powershell
 python -m app.cli analyze "D:\Audio\vocal.wav"
+python -m app.cli mix --vocal "D:\Audio\vocal.wav" --instrumental "D:\Audio\beat.wav" --output "D:\Audio\VeryRare-Mix.wav"
 ```
 
-Render a mix:
+## VST3 hosting
+
+Discover plugins in standard Windows VST3 locations:
 
 ```powershell
-python -m app.cli mix --vocal "D:\Audio\vocal.wav" --instrumental "D:\Audio\beat.wav" --output "D:\Audio\VeryRare-Mix.wav" --reverb 0.08 --delay 0.05
+python -m app.cli vst3-scan
 ```
 
-Use WAV files with matching sample rates. Inputs are read only; output and report are written to the output path.
+Inspect one plugin and see its actual exposed parameter names:
+
+```powershell
+python -m app.cli vst3-inspect --plugin "C:\Program Files\Common Files\VST3\Example.vst3"
+```
+
+Render one plugin:
+
+```powershell
+python -m app.cli vst3-render --input "D:\Audio\vocal.wav" --output "D:\Audio\vocal-fx.wav" --plugin "C:\Program Files\Common Files\VST3\Example.vst3" --wet 0.8 --param mix=0.25
+```
+
+Parameter names and values depend on the actual plugin; inspect first. For a sequential chain, create a JSON manifest with a `plugins` array, each containing an explicit `path`, optional `parameters` object, and `wet` value, then run:
+
+```powershell
+python -m app.cli vst3-chain --input "D:\Audio\vocal.wav" --output "D:\Audio\vocal-chain.wav" --manifest "D:\Audio\chain.json"
+```
+
+Use only plugins you trust and have permission to use. Pedalboard is GPL-3.0; review licensing before distributing the app as closed-source or bundling it into another product. Third-party plugin licenses remain separate.
+
+## AI agent planner
+
+Local-only planning (requires Ollama running and the selected model installed):
+
+```powershell
+python -m app.cli agent-plan --mode local --local-model gemma3:4b --prompt "Make the vocal clearer but keep it soft and natural."
+```
+
+Cloud fallback is off by default. To explicitly enable text-only Gemini planning, first set your own key in the environment, then:
+
+```powershell
+$env:GEMINI_API_KEY = "YOUR_KEY"
+python -m app.cli agent-plan --mode auto --allow-cloud --prompt "Suggest an effect chain for a dark, dreamy vocal."
+```
+
+Cloud free-tier availability and quotas can change. This app does not enable paid billing or automatically attempt a paid fallback. Do not send confidential text to a cloud service. The AI output is advisory: it does not yet automatically execute the plan. Plugin execution must go through reviewed manifests and the installed-plugin checks.
 
 ## Tests
 
@@ -44,4 +83,4 @@ pip install pytest
 pytest -q
 ```
 
-The DSP is intentionally conservative. A future prompt planner must translate the user's sound description into a reviewable settings plan, not execute arbitrary generated code. Additional agent roles and VST hosting should be added only with tests and verified plugin licensing.
+The code has been committed to GitHub but has not yet been run on your Windows machine; actual VST3 compatibility must be verified with your installed plugins.
