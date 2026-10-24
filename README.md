@@ -7,7 +7,7 @@ A local-first audio engineering studio for already-converted vocal WAVs and inst
 - Local browser UI served by FastAPI on loopback: import WAVs, inspect basic measurements, adjust the built-in DSP controls, render a new 24-bit PCM WAV, play/download it, and inspect the measurement report.
 - Built-in deterministic DSP: high-pass, presence EQ, simple compression, short-tap room reverb, delay, track gain and a sample-peak ceiling.
 - Experimental Pedalboard VST3 adapter and sequential effect-chain tools. Compatibility is plugin-specific and has not yet been verified against the user's Windows plugins.
-- Local stdio MCP server for compatible MCP clients; optional text-only planner. The UI can request an advisory plan from the local Ollama model first; cloud fallback is a separate explicit checkbox and sends prompt text only. Suggested plans do not execute effects.
+- Local stdio MCP server for compatible MCP clients; tools include local audio analysis, VST3 discovery/inspection, actual sequential VST3 chain rendering, and validation of a typed automation timeline. The timeline validator is a planning/safety step only and does not render time-local events yet. The optional text planner remains advisory; suggested plans do not automatically execute effects.
 - XIAS-inspired UI quality guide: `docs/XIAS_UI_GUIDELINES.md`.
 
 ## Windows 11 quick start
@@ -34,7 +34,7 @@ Default audio workspace: `workspace/` inside the repository. To use another fold
 - Built-in reverb is a simple early-reflection-style tap model, not convolution reverb or a professional room simulator.
 - Peak limiting is not LUFS/true-peak mastering. The UI reports basic peak/RMS measurements, not subjective quality.
 - Auto-Tune, harmonizer, dereverb, denoising and other advanced processing require a separately verified implementation/plugin. They are not silently simulated by the built-in engine.
-- The first UI pass has no live waveform analysis, cancellation, streamed render progress, undo stack, packaged desktop executable, or persistent cross-session render history.
+- The first UI pass has no live waveform analysis, cancellation, streamed render progress, undo stack, packaged desktop executable, persistent cross-session render history, or time-local automation renderer. Segment-level effect execution, reference-to-vocal matching, automatic harmonizer/pitch correction, and timeline editing UI remain unfinished.
 - The VST3 host is experimental and does not sandbox third-party plugins. Only load plugins you trust; a faulty plugin may crash the process.
 
 ## Privacy and file safety
@@ -55,3 +55,10 @@ pytest -q
 ```
 
 GitHub commits confirm that files were stored in the repository; they do **not** prove that the app runs correctly on Windows. The new UI and API have not yet been executed in the user's environment. Validate the setup, WAV import, render, playback, and download locally before treating this as a working release.
+
+
+## AI audio engineering roadmap (in progress)
+
+See [AI audio engineering contract](docs/AI_AUDIO_ENGINEERING_CONTRACT.md) for the intended reference-song workflow, plugin catalog safety rules, automation timeline schema, UI contract, and acceptance gates.
+
+The new `app/automation_timeline.py` validates structured event plans (timing, unique IDs, effect kinds, fades, parameter values, and plugin-path requirements). MCP exposes this as `validate_automation_timeline`. **Validation is not rendering**: the tool explicitly returns `rendered: false`. Do not describe segment-level effects, reference matching, or automatic pitch correction as implemented until an execution engine and listening/integration tests exist.
