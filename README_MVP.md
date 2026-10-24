@@ -27,7 +27,7 @@ Open http://127.0.0.1:8765. The first UI supports WAV import (500 MiB/file), met
 - Output: 24-bit PCM WAV plus JSON measurement/render report.
 - No voice conversion, no vocal separation, no automatic plugin downloads, no arbitrary LLM-generated code or shell commands.
 - The VST3 adapter is an early offline MVP: no plugin GUI, MIDI/instrument rendering in the chain, sidechain routing, latency compensation, real-time monitoring, or section automation. Third-party plugins are not sandboxed; only load trusted plugins.
-- The Production Brief in the UI is informational only in this version and is not yet connected to an AI planner.
+- The Production Brief can request an advisory plan from the configured local-first planner. Explicit cloud fallback sends prompt text only. Plans do not execute effects or automatically change mix controls.
 - The UI is not packaged as a native desktop executable. Render history is in-memory for the current browser session only.
 
 ## CLI mixer
