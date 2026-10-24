@@ -12,7 +12,9 @@ A local-first audio engineering studio for already-converted vocal WAVs and inst
 
 ## Windows 11 quick start
 
-Use Python 3.11 or 3.12 from the repository folder:
+**Simplest route:** run `setup_windows.bat` once, then double-click `start_studio.bat`. The setup script creates a local virtual environment and installs the declared dependencies. The launcher starts the app only on loopback. Keep its terminal window open while using the UI.
+
+Manual route (Python 3.11 or 3.12) from the repository folder:
 
 ```powershell
 py -3.11 -m venv .venv
