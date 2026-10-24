@@ -28,6 +28,21 @@ Parameter names and values differ by plugin. Inspect first, then pass exact expo
 - Plugins remain user-installed. The studio does not silently download plugins or bypass licenses.
 - The existing DSP mix engine remains available. VST3 support is additive and does not yet replace every DSP stage with plugin hosting.
 
+## Sequential effect chains
+
+A reviewed JSON manifest can run multiple explicitly named VST3 effects in order. Example:
+
+```json
+{
+  "plugins": [
+    {"path": "C:\\Program Files\\Common Files\\VST3\\ExampleEQ.vst3", "parameters": {}, "wet": 1.0},
+    {"path": "C:\\Program Files\\Common Files\\VST3\\ExampleCompressor.vst3", "parameters": {}, "wet": 0.8}
+  ]
+}
+```
+
+Run it with `python -m app.cli vst3-chain --input "D:\\Audio\\vocal.wav" --output "D:\\Audio\\vocal-chain.wav" --manifest "D:\\Audio\\chain.json"`. Use exact parameter identifiers exposed by each plugin; validate each plugin with `vst3-inspect` first. This is sequential offline effect processing, not a full DAW: sidechain routing, latency compensation, plugin GUIs, tempo/MIDI control and section automation are still future work.
+
 ## Agent access and permissions
 
 `app/agent_router.py` supports a local Ollama planner and an optional cloud Gemini planner. Local is preferred by default. Cloud planning is disabled unless explicitly opted in, and requires a key supplied through `GEMINI_API_KEY`. Only the text prompt/plan is sent to the cloud; this module does not upload audio.
