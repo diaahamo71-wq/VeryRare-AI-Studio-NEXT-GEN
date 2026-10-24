@@ -51,7 +51,7 @@ class MixRequest(BaseModel):
     @field_validator("vocal_file", "beat_file")
     @classmethod
     def validate_workspace_filename(cls, value: str) -> str:
-        if Path(value).name != value or value in {".", ".."} or "/" in value or "\\\\" in value:
+        if Path(value).name != value or value in {".", ".."} or "/" in value or chr(92) in value:
             raise ValueError("Audio references must be workspace file names, not filesystem paths.")
         return value
 
@@ -147,7 +147,9 @@ def render_mix(request: MixRequest) -> dict:
     vocal_path = _safe_workspace_file(request.vocal_file)
     beat_path = _safe_workspace_file(request.beat_file)
     output_name = f"VeryRare-Mix-{uuid.uuid4().hex[:10]}.wav"
+    reference_name = f"VeryRare-Reference-{uuid.uuid4().hex[:10]}.wav"
     output_path = _safe_workspace_file(output_name, must_exist=False)
+    reference_path = _safe_workspace_file(reference_name, must_exist=False)
     settings = MixSettings(
         vocal_gain_db=request.vocal_gain_db,
         instrumental_gain_db=request.beat_gain_db,
@@ -161,16 +163,33 @@ def render_mix(request: MixRequest) -> dict:
         master_peak_dbfs=request.master_peak_dbfs,
     )
     try:
+        reference_settings = MixSettings(
+            vocal_gain_db=0.0,
+            instrumental_gain_db=0.0,
+            vocal_highpass_hz=20.0,
+            vocal_presence_db=0.0,
+            compression_ratio=1.0,
+            reverb_mix=0.0,
+            delay_mix=0.0,
+            master_peak_dbfs=-0.1,
+        )
+        reference_report = mix_tracks(vocal_path, beat_path, reference_path, reference_settings)
         report = mix_tracks(vocal_path, beat_path, output_path, settings)
         return {
             "rendered": True,
             "output_file": output_name,
             "audio_url": f"/api/audio/{output_name}",
+            "reference_file": reference_name,
+            "reference_url": f"/api/audio/{reference_name}",
+            "reference_note": "Neutral gain-balanced reference blend with a protective peak ceiling; not a bit-perfect bypass.",
+            "reference_report": reference_report,
             "report": report,
         }
     except Exception as exc:
         output_path.unlink(missing_ok=True)
         output_path.with_suffix(".report.json").unlink(missing_ok=True)
+        reference_path.unlink(missing_ok=True)
+        reference_path.with_suffix(".report.json").unlink(missing_ok=True)
         raise HTTPException(status_code=422, detail=f"Render failed: {type(exc).__name__}: {exc}") from exc
 
 
