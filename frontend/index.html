@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="dark">\n  <meta name="theme-color" content="#111116">\n  <meta name="description" content="A local-first workspace for shaping vocals, auditioning effects, and rendering mixes.">
   <title>VeryRare AI Studio</title>
   <link rel="stylesheet" href="/assets/studio.css">
 </head>
@@ -33,10 +33,10 @@
       <section id="studio-section" class="section">
         <div class="page-heading">
           <div><div class="eyebrow"><span class="eyebrow-line"></span> YOUR PERSONAL AUDIO WORKSPACE</div><h1>Shape your <span>sound.</span></h1><p>Bring your vocal and beat together. Keep the source safe. Make every change intentional.</p></div>
-          <div class="heading-chip"><span class="pulse"></span> Local engine <b>Ready</b></div>
+          <div class="heading-chip"><span class="pulse"></span> Local-first workflow <b>Source-safe</b></div>
         </div>
 
-        <div class="section-title"><div><span class="step">01</span><h2>Source tracks</h2></div><span class="muted">WAV or MP3 · imported as WAV</span></div>
+        <nav class="workflow-steps" aria-label="Studio workflow"><a class="workflow-step current" href="#source-tracks"><span>01</span><strong>Import</strong></a><a class="workflow-step" href="#mix-controls"><span>02</span><strong>Shape</strong></a><a class="workflow-step" href="#live-preview-heading"><span>03</span><strong>Audition</strong></a><a class="workflow-step" href="#timeline-heading"><span>04</span><strong>Time effects</strong></a><a class="workflow-step" href="#render-action"><span>05</span><strong>Render</strong></a></nav>\n        <div id="source-tracks" class="section-title"><div><span class="step">01</span><h2>Import your tracks</h2></div><span class="muted">Vocal + instrumental</span></div>
         <div class="source-grid">
           <label class="track-card" for="vocal-file">
             <div class="track-card-top"><span class="track-icon vocal-icon">♬</span><span class="track-badge">VOCAL</span><span class="file-state" id="vocal-state">Not loaded</span></div>
@@ -55,33 +55,33 @@
         </div>
         <div class="import-row"><span class="privacy-inline"><span>✓</span> Files are processed locally; originals are never overwritten.</span><button id="import-btn" class="button button-secondary" disabled>Import tracks <span>↗</span></button></div>
 
-        <div class="section-title mix-title"><div><span class="step">02</span><h2>Mix controls</h2></div><span class="muted">Conservative starting point · adjust by ear</span></div>
+        <div id="mix-controls" class="section-title mix-title"><div><span class="step">02</span><h2>Shape the mix</h2></div><span class="muted">Start subtle · compare by ear</span></div>
         <div class="mix-layout">
           <div class="control-panel">
-            <div class="panel-heading"><div><h3>Vocal treatment</h3><p>Small moves first. Listen in context.</p></div><span class="panel-symbol">✳</span></div>
+            <div class="panel-heading"><div><h3>Vocal treatment</h3><p>Clean the vocal without pushing it forward too hard.</p></div><span class="panel-symbol">✳</span></div>
             <div class="slider-row"><div class="slider-label"><label for="vocal-gain">Vocal level</label><output id="vocal-gain-out">0.0 dB</output></div><input id="vocal-gain" type="range" min="-18" max="12" step=".5" value="0"></div>
-            <div class="slider-row"><div class="slider-label"><label for="highpass">Low cut</label><output id="highpass-out">80 Hz</output></div><input id="highpass" type="range" min="20" max="250" step="5" value="80"></div>
-            <div class="slider-row"><div class="slider-label"><label for="presence">Presence EQ</label><output id="presence-out">+1.5 dB</output></div><input id="presence" type="range" min="-6" max="6" step=".5" value="1.5"></div>
-            <div class="slider-row"><div class="slider-label"><label for="compression">Compression</label><output id="compression-out">2.0:1</output></div><input id="compression" type="range" min="1" max="6" step=".25" value="2"></div>
+            <div class="slider-row"><div class="slider-label"><label for="highpass">Low cut <span class="field-hint">Removes low rumble</span></label><output id="highpass-out">80 Hz</output></div><input id="highpass" type="range" min="20" max="250" step="5" value="80"></div>
+            <div class="slider-row"><div class="slider-label"><label for="presence">Presence EQ <span class="field-hint">Adds vocal clarity</span></label><output id="presence-out">+1.5 dB</output></div><input id="presence" type="range" min="-6" max="6" step=".5" value="1.5"></div>
+            <div class="slider-row"><div class="slider-label"><label for="compression">Compression <span class="field-hint">Controls level changes</span></label><output id="compression-out">2.0:1</output></div><input id="compression" type="range" min="1" max="6" step=".25" value="2"></div>
             <div class="slider-row"><div class="slider-label"><label for="threshold">Comp. threshold</label><output id="threshold-out">-18 dB</output></div><input id="threshold" type="range" min="-36" max="-6" step="1" value="-18"></div>
           </div>
           <div class="control-panel">
-            <div class="panel-heading"><div><h3>Space & master</h3><p>Add depth without losing clarity.</p></div><span class="panel-symbol">✧</span></div>
+            <div class="panel-heading"><div><h3>Space & master</h3><p>Balance the beat, space, and final peak level.</p></div><span class="panel-symbol">✧</span></div>
             <div class="slider-row"><div class="slider-label"><label for="beat-gain">Beat level</label><output id="beat-gain-out">-3.0 dB</output></div><input id="beat-gain" type="range" min="-18" max="12" step=".5" value="-3"></div>
-            <div class="slider-row"><div class="slider-label"><label for="reverb">Room reverb</label><output id="reverb-out">8%</output></div><input id="reverb" type="range" min="0" max="35" step="1" value="8"></div>
-            <div class="slider-row"><div class="slider-label"><label for="delay">Delay</label><output id="delay-out">0%</output></div><input id="delay" type="range" min="0" max="30" step="1" value="0"></div>
+            <div class="slider-row"><div class="slider-label"><label for="reverb">Room reverb <span class="field-hint">Adds space</span></label><output id="reverb-out">8%</output></div><input id="reverb" type="range" min="0" max="35" step="1" value="8"></div>
+            <div class="slider-row"><div class="slider-label"><label for="delay">Delay <span class="field-hint">Adds repeats</span></label><output id="delay-out">0%</output></div><input id="delay" type="range" min="0" max="30" step="1" value="0"></div>
             <div class="slider-row"><div class="slider-label"><label for="delay-time">Delay time</label><output id="delay-time-out">260 ms</output></div><input id="delay-time" type="range" min="60" max="700" step="10" value="260"></div>
             <div class="slider-row"><div class="slider-label"><label for="ceiling">Peak ceiling</label><output id="ceiling-out">-1.0 dBFS</output></div><input id="ceiling" type="range" min="-3" max="-.1" step=".1" value="-1"></div>
           </div>
         </div>
 
-        <div class="prompt-panel">
+        <div id="production-brief-panel" class="prompt-panel">
           <div class="prompt-icon">✧</div><div class="prompt-copy"><h3>Production brief <span class="tag">AI PLAN · ADVISORY</span></h3><p>Describe the sound you want. The local-first planner can propose an effect plan; it does not yet execute plugin chains or change the mix controls automatically.</p><textarea id="production-brief" rows="2" maxlength="1200" placeholder="e.g. Keep the vocal soft and intimate, add a little dreamy space, and leave the consonants natural…"></textarea><div class="plan-actions"><label class="cloud-toggle"><input id="allow-cloud" type="checkbox"><span>Allow cloud text fallback <small>Only if local AI is unavailable; sends prompt text, never audio.</small></span></label><button id="plan-btn" class="button button-secondary" type="button">Create effect plan <span>✧</span></button></div><div id="plan-result" class="plan-result" hidden aria-live="polite"></div></div>
         </div>
 
 
         <section class="live-preview-panel" aria-labelledby="live-preview-heading">
-          <div class="panel-heading"><div><h3 id="live-preview-heading">Realtime effect audition</h3><p>Play your selected file and hear changes immediately. Preview runs locally in your browser; it does not upload or overwrite audio.</p></div><span class="panel-symbol">◉</span></div>
+          <div class="panel-heading"><div><h3 id="live-preview-heading">Realtime effect audition</h3><p>Try one effect at a time. Compare the dry source with the processed sound before deciding. This audition is local to your browser.</p></div><span class="panel-symbol">◉</span></div>
           <div class="live-preview-controls">
             <label>Source track<select id="live-preview-track"><option value="vocal">Vocal file</option><option value="beat">Instrumental / beat</option></select></label>
             <label>Live effect<select id="live-preview-effect"><option value="clean">Clean / bypass</option><option value="telephone">Otherworldly radio</option><option value="reverb">Dreamy reverb</option><option value="delay">Echo / delay</option><option value="dreamcore">Dreamcore space</option></select></label>
@@ -91,12 +91,12 @@
             <label class="live-wet-control">Echo feedback <output id="live-feedback-out">28%</output><input id="live-feedback" type="range" min="0" max="65" step="1" value="28"></label>
             <label class="live-wet-control">Radio tone <output id="live-tone-out">4.5 kHz</output><input id="live-tone" type="range" min="1200" max="12000" step="100" value="4500"></label>
           </div>
-          <div class="live-preview-player"><audio id="live-preview-audio" controls preload="metadata"></audio><span id="live-preview-status" class="muted">Choose a vocal or beat file above, then press play.</span></div>
+          <div class="live-preview-player"><audio id="live-preview-audio" controls preload="metadata" aria-label="Realtime effect preview player"></audio><span id="live-preview-status" class="live-status" role="status" aria-live="polite">Choose a vocal or beat file above, then press play.</span></div>
           <div class="live-preview-actions"><button id="live-preview-enable" class="button button-primary" type="button">Enable realtime effects</button><button id="live-preview-bypass" class="button button-secondary" type="button" disabled>Bypass effects</button><button id="live-preview-ab" class="button button-secondary" type="button" disabled>Compare A/B</button><span class="muted">A/B switches between the dry source and processed preview. Browser effects are audition tools; installed VST3 plugins are not hosted here yet.</span></div>
         </section>
 
         <section class="timeline-panel" aria-labelledby="timeline-heading">
-          <div class="panel-heading"><div><h3 id="timeline-heading">Time-local vocal effects</h3><p>Apply an effect only between selected timestamps. This renders the selected track, not the full vocal/beat mix.</p></div><span class="panel-symbol">⌁</span></div>
+          <div class="panel-heading"><div><h3 id="timeline-heading">Time-local vocal effects</h3><p>Place an effect at a specific moment, such as a radio tone at 0:20. This renders only the selected track, not the complete vocal-and-beat mix.</p></div><span class="panel-symbol">⌁</span></div>
           <div class="plugin-scan-row"><button id="scan-plugins-btn" class="button button-secondary" type="button">Scan installed VST3 plugins</button><span id="plugin-scan-status" class="muted">Valhalla and other installed VST3 effects can appear here.</span></div>
           <div class="timeline-form">
             <label>Track<select id="timeline-track"><option value="vocal">Converted vocal</option><option value="beat">Instrumental / beat</option></select></label>
@@ -110,11 +110,11 @@
           </div>
           <div id="timeline-message" class="message" role="status" aria-live="polite" hidden></div>
           <div id="timeline-events" class="timeline-events"><div class="empty-state">No effect segments yet. Add one above.</div></div>
-          <div class="timeline-footer"><span class="privacy-inline">Source track stays unchanged. Effects stop at the segment end in this version.</span><button id="render-timeline-btn" class="button button-primary" type="button" disabled>Render selected track <span>→</span></button></div>
+          <div class="timeline-footer"><span class="privacy-inline">Your source stays unchanged. Segment effects stop at the selected end time.</span><button id="render-timeline-btn" class="button button-primary" type="button" disabled>Render selected track <span>→</span></button></div>
           <div id="timeline-result" class="timeline-result" hidden><strong id="timeline-result-name">Segment render</strong><audio id="timeline-audio" controls preload="metadata"></audio><a id="timeline-download" class="button button-secondary" download>Download segment render ↓</a></div>
         </section>
 
-        <div class="render-bar"><div class="render-explainer"><span class="render-icon">◉</span><div><strong>Ready to render?</strong><p>Creates a new 24-bit WAV and a measurement report.</p></div></div><button id="render-btn" class="button button-primary" disabled><span class="button-star">✦</span> Render mix <span class="button-arrow">→</span></button></div>
+        <div id="render-action" class="render-bar"><div class="render-explainer"><span class="render-icon">◉</span><div><strong>Ready to render?</strong><p>Creates a separate WAV and measurement report. Your imported source files stay untouched.</p></div></div><button id="render-btn" class="button button-primary" disabled><span class="button-star">✦</span> Render mix <span class="button-arrow">→</span></button></div>
         <div id="message" class="message" role="status" aria-live="polite" hidden></div>
 
         <section id="result-panel" class="result-panel" hidden>
