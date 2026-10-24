@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>VeryRare AI Studio</title>
+  <link rel="stylesheet" href="/assets/studio.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="VeryRare Studio home">
+        <span class="brand-mark">VR</span>
+        <span><strong>VeryRare</strong><small>AI STUDIO</small></span>
+      </a>
+      <div class="nav-label">WORKSPACE</div>
+      <button class="nav-item active" data-section="studio"><span class="nav-icon">◈</span> Studio <span class="nav-dot"></span></button>
+      <button class="nav-item" data-section="effects"><span class="nav-icon">⌁</span> Effects library</button>
+      <button class="nav-item" data-section="activity"><span class="nav-icon">◷</span> Render reports</button>
+      <div class="sidebar-bottom">
+        <div class="privacy-card"><span class="privacy-icon">⌂</span><div><strong>Local by default</strong><p>Your audio stays on this PC.</p></div><span class="status-dot"></span></div>
+        <div class="sidebar-version">EARLY ACCESS <span>v0.1</span></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="breadcrumbs"><span>Workspace</span><b>/</b><strong id="crumb">Studio</strong></div>
+        <div class="topbar-right"><span class="engine-status"><i></i><span id="health-text">Connecting to local engine…</span></span><span class="avatar">VR</span></div>
+      </header>
+
+      <section id="studio-section" class="section">
+        <div class="page-heading">
+          <div><div class="eyebrow"><span class="eyebrow-line"></span> YOUR PERSONAL AUDIO WORKSPACE</div><h1>Shape your <span>sound.</span></h1><p>Bring your vocal and beat together. Keep the source safe. Make every change intentional.</p></div>
+          <div class="heading-chip"><span class="pulse"></span> Local engine <b>Ready</b></div>
+        </div>
+
+        <div class="section-title"><div><span class="step">01</span><h2>Source tracks</h2></div><span class="muted">WAV · 24-bit recommended</span></div>
+        <div class="source-grid">
+          <label class="track-card" for="vocal-file">
+            <div class="track-card-top"><span class="track-icon vocal-icon">♬</span><span class="track-badge">VOCAL</span><span class="file-state" id="vocal-state">Not loaded</span></div>
+            <div class="track-main"><strong id="vocal-name">Drop your converted vocal</strong><span id="vocal-detail">Already-converted vocal WAV</span></div>
+            <div class="waveform vocal-wave" aria-hidden="true"></div>
+            <div class="track-bottom"><span>Choose WAV file</span><span class="plus">＋</span></div>
+            <input id="vocal-file" type="file" accept=".wav,audio/wav" hidden>
+          </label>
+          <label class="track-card" for="beat-file">
+            <div class="track-card-top"><span class="track-icon beat-icon">▤</span><span class="track-badge beat-badge">INSTRUMENTAL</span><span class="file-state" id="beat-state">Not loaded</span></div>
+            <div class="track-main"><strong id="beat-name">Drop your instrumental</strong><span id="beat-detail">Beat / instrumental WAV</span></div>
+            <div class="waveform beat-wave" aria-hidden="true"></div>
+            <div class="track-bottom"><span>Choose WAV file</span><span class="plus">＋</span></div>
+            <input id="beat-file" type="file" accept=".wav,audio/wav" hidden>
+          </label>
+        </div>
+        <div class="import-row"><span class="privacy-inline"><span>✓</span> Files are processed locally; originals are never overwritten.</span><button id="import-btn" class="button button-secondary" disabled>Import tracks <span>↗</span></button></div>
+
+        <div class="section-title mix-title"><div><span class="step">02</span><h2>Mix controls</h2></div><span class="muted">Conservative starting point · adjust by ear</span></div>
+        <div class="mix-layout">
+          <div class="control-panel">
+            <div class="panel-heading"><div><h3>Vocal treatment</h3><p>Small moves first. Listen in context.</p></div><span class="panel-symbol">✳</span></div>
+            <div class="slider-row"><div class="slider-label"><label for="vocal-gain">Vocal level</label><output id="vocal-gain-out">0.0 dB</output></div><input id="vocal-gain" type="range" min="-18" max="12" step=".5" value="0"></div>
+            <div class="slider-row"><div class="slider-label"><label for="highpass">Low cut</label><output id="highpass-out">80 Hz</output></div><input id="highpass" type="range" min="20" max="250" step="5" value="80"></div>
+            <div class="slider-row"><div class="slider-label"><label for="presence">Presence EQ</label><output id="presence-out">+1.5 dB</output></div><input id="presence" type="range" min="-6" max="6" step=".5" value="1.5"></div>
+            <div class="slider-row"><div class="slider-label"><label for="compression">Compression</label><output id="compression-out">2.0:1</output></div><input id="compression" type="range" min="1" max="6" step=".25" value="2"></div>
+            <div class="slider-row"><div class="slider-label"><label for="threshold">Comp. threshold</label><output id="threshold-out">-18 dB</output></div><input id="threshold" type="range" min="-36" max="-6" step="1" value="-18"></div>
+          </div>
+          <div class="control-panel">
+            <div class="panel-heading"><div><h3>Space & master</h3><p>Add depth without losing clarity.</p></div><span class="panel-symbol">✧</span></div>
+            <div class="slider-row"><div class="slider-label"><label for="beat-gain">Beat level</label><output id="beat-gain-out">-3.0 dB</output></div><input id="beat-gain" type="range" min="-18" max="12" step=".5" value="-3"></div>
+            <div class="slider-row"><div class="slider-label"><label for="reverb">Room reverb</label><output id="reverb-out">8%</output></div><input id="reverb" type="range" min="0" max="35" step="1" value="8"></div>
+            <div class="slider-row"><div class="slider-label"><label for="delay">Delay</label><output id="delay-out">0%</output></div><input id="delay" type="range" min="0" max="30" step="1" value="0"></div>
+            <div class="slider-row"><div class="slider-label"><label for="delay-time">Delay time</label><output id="delay-time-out">260 ms</output></div><input id="delay-time" type="range" min="60" max="700" step="10" value="260"></div>
+            <div class="slider-row"><div class="slider-label"><label for="ceiling">Peak ceiling</label><output id="ceiling-out">-1.0 dBFS</output></div><input id="ceiling" type="range" min="-3" max="-.1" step=".1" value="-1"></div>
+          </div>
+        </div>
+
+        <div class="prompt-panel">
+          <div class="prompt-icon">✧</div><div class="prompt-copy"><h3>Production brief <span class="tag">PREVIEW</span></h3><p>Describe the sound you're aiming for. AI-driven planning and automatic effect-chain execution are not connected in this UI build yet; this note won't change the DSP settings above.</p><textarea id="production-brief" rows="2" maxlength="1200" placeholder="e.g. Keep the vocal soft and intimate, add a little dreamy space, and leave the consonants natural…"></textarea></div>
+        </div>
+
+        <div class="render-bar"><div class="render-explainer"><span class="render-icon">◉</span><div><strong>Ready to render?</strong><p>Creates a new 24-bit WAV and a measurement report.</p></div></div><button id="render-btn" class="button button-primary" disabled><span class="button-star">✦</span> Render mix <span class="button-arrow">→</span></button></div>
+        <div id="message" class="message" role="status" aria-live="polite" hidden></div>
+
+        <section id="result-panel" class="result-panel" hidden>
+          <div class="result-heading"><div><div class="eyebrow">RENDER COMPLETE</div><h2>Your new mix</h2></div><span class="success-pill"><i></i> File created</span></div>
+          <div class="result-player"><div class="result-file-icon">♫</div><div class="result-file-info"><strong id="result-name">VeryRare-Mix.wav</strong><span id="result-meta">24-bit PCM WAV</span></div><audio id="result-audio" controls preload="metadata"></audio><a id="download-link" class="button button-secondary" download>Download WAV ↓</a></div>
+          <div id="report-grid" class="report-grid"></div>
+          <p class="quality-note">Technical checks are not a substitute for listening. Compare with the source and confirm the vocal/beat balance before publishing.</p>
+        </section>
+      </section>
+
+      <section id="effects-section" class="section hidden">
+        <div class="page-heading"><div><div class="eyebrow">PROCESSING INVENTORY</div><h1>Effects <span>library.</span></h1><p>See which processors are implemented and which require a compatible external plugin.</p></div></div>
+        <div id="capabilities" class="capability-list"><div class="empty-state">Loading effect inventory…</div></div>
+      </section>
+      <section id="activity-section" class="section hidden">
+        <div class="page-heading"><div><div class="eyebrow">YOUR RECENT WORK</div><h1>Render <span>reports.</span></h1><p>Reports from this session appear here after each successful render.</p></div></div>
+        <div id="activity-list" class="activity-list"><div class="empty-state">No renders yet. Your first mix will show up here.</div></div>
+      </section>
+      <footer class="footer"><span>VeryRare AI Studio <b>·</b> Local-first audio engineering</span><span>Protect the source. Trust your ears.</span></footer>
+    </main>
+  </div>
+  <script src="/assets/studio.js" defer></script>
+</body>
+</html>
