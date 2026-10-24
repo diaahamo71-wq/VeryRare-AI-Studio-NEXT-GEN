@@ -335,6 +335,33 @@ function renderHistory() {
     card.append(icon, info, link); host.append(card);
   });
 }
+
+async function loadPluginCatalog() {
+  const host = $("plugin-catalog");
+  const note = $("plugin-catalog-note");
+  try {
+    const data = await api("/api/plugin-catalog");
+    host.innerHTML = "";
+    data.plugins.forEach(plugin => {
+      const card = document.createElement("article");
+      card.className = "plugin-card";
+      const top = document.createElement("div"); top.className = "plugin-card-top";
+      const title = document.createElement("strong"); title.textContent = plugin.name;
+      const size = document.createElement("span"); size.className = "plugin-size"; size.textContent = plugin.zip_mib.toFixed(2) + " MiB ZIP";
+      top.append(title, size);
+      const category = document.createElement("span"); category.className = "plugin-category"; category.textContent = plugin.category;
+      const description = document.createElement("p"); description.textContent = plugin.purpose;
+      const meta = document.createElement("p"); meta.className = "plugin-meta"; meta.textContent = plugin.vendor + " · " + plugin.format;
+      const link = document.createElement("a"); link.className = "button button-secondary"; link.href = plugin.official_url;
+      link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = "Official download page ↗";
+      card.append(top, category, description, meta, link);
+      host.append(card);
+    });
+    if (note) note.textContent = data.notice || "Download only from the official developer site. Installation and plugin loading are separate steps.";
+  } catch (error) {
+    host.textContent = "Could not load the plugin catalog: " + error.message;
+  }
+}
 async function loadCapabilities() {
   try {
     const data = await api("/api/capabilities");
@@ -357,7 +384,7 @@ document.querySelectorAll("[data-section]").forEach(button => button.addEventLis
   Object.entries(sections).forEach(([key, id]) => $(id).classList.toggle("hidden", key !== button.dataset.section));
   document.querySelectorAll("[data-section]").forEach(item => item.classList.toggle("active", item === button));
   $("crumb").textContent = ({studio:"Studio",effects:"Effects library",activity:"Render reports"}[button.dataset.section]);
-  if (button.dataset.section === "effects") loadCapabilities();
+  if (button.dataset.section === "effects") { loadCapabilities(); loadPluginCatalog(); }
   if (button.dataset.section === "activity") renderHistory();
   window.scrollTo({top:0, behavior:"smooth"});
 }));
