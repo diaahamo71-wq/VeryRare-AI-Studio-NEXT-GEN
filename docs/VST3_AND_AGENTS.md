@@ -54,3 +54,12 @@ Agents can recommend a chain and settings, but do not get unrestricted file-syst
 - Local: Ollama API on `127.0.0.1:11434`. On a 16 GB RAM machine with a very weak GPU, use a small quantized model and expect slower CPU inference.
 - Cloud: Gemini API free-tier availability depends on account, model and current quotas. Free-tier data handling may differ from paid tier; do not send confidential text. No paid billing is enabled by this app, and no paid fallback is attempted.
 - Fail closed: if local is unavailable and cloud consent is off, return a clear unavailable status rather than sending anything externally.
+
+
+## MCP server
+
+`app/mcp_server.py` exposes guarded local tools over MCP stdio: status, VST3 discovery and inspection, WAV analysis, single-plugin render, and sequential effect-chain render. Configure `VERYRARE_AUDIO_ROOT` to a dedicated folder for user audio. Audio inputs/outputs are restricted to that workspace; plugin paths must match the discovered VST3 allowlist; outputs cannot silently overwrite existing files.
+
+This MCP server is local-first and does not call the cloud planner or upload audio. Claude Desktop and other compatible local MCP clients can launch it using their local Python environment. ChatGPT connectivity is separate: supported plans/workspaces and a remote HTTPS endpoint or Secure MCP Tunnel may be required. A local stdio server is not automatically available to the current ChatGPT conversation. Check current official support and plan restrictions before deployment.
+
+The current MCP tools expose controlled audio operations; the AI agent planner remains advisory and is not yet an autonomous multi-agent orchestrator. Plugins are not sandboxed, so only use trusted plugins.
