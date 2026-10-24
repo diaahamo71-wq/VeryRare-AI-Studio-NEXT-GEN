@@ -87,9 +87,12 @@
             <label>Live effect<select id="live-preview-effect"><option value="clean">Clean / bypass</option><option value="telephone">Otherworldly radio</option><option value="reverb">Dreamy reverb</option><option value="delay">Echo / delay</option><option value="dreamcore">Dreamcore space</option></select></label>
             <label class="live-wet-control">Effect amount <output id="live-wet-out">35%</output><input id="live-wet" type="range" min="0" max="100" step="1" value="35"></label>
             <label class="live-wet-control">Preview level <output id="live-level-out">0 dB</output><input id="live-level" type="range" min="-18" max="6" step="1" value="0"></label>
+            <label class="live-wet-control">Reverb tail <output id="live-tail-out">2.8 s</output><input id="live-tail" type="range" min="0.8" max="6" step="0.2" value="2.8"></label>
+            <label class="live-wet-control">Echo feedback <output id="live-feedback-out">28%</output><input id="live-feedback" type="range" min="0" max="65" step="1" value="28"></label>
+            <label class="live-wet-control">Radio tone <output id="live-tone-out">4.5 kHz</output><input id="live-tone" type="range" min="1200" max="12000" step="100" value="4500"></label>
           </div>
           <div class="live-preview-player"><audio id="live-preview-audio" controls preload="metadata"></audio><span id="live-preview-status" class="muted">Choose a vocal or beat file above, then press play.</span></div>
-          <div class="live-preview-actions"><button id="live-preview-enable" class="button button-primary" type="button">Enable realtime effects</button><button id="live-preview-bypass" class="button button-secondary" type="button" disabled>Bypass effects</button><span class="muted">Browser effects are audition tools; installed VST3 plugins are not hosted in this live preview yet.</span></div>
+          <div class="live-preview-actions"><button id="live-preview-enable" class="button button-primary" type="button">Enable realtime effects</button><button id="live-preview-bypass" class="button button-secondary" type="button" disabled>Bypass effects</button><button id="live-preview-ab" class="button button-secondary" type="button" disabled>Compare A/B</button><span class="muted">A/B switches between the dry source and processed preview. Browser effects are audition tools; installed VST3 plugins are not hosted here yet.</span></div>
         </section>
 
         <section class="timeline-panel" aria-labelledby="timeline-heading">
