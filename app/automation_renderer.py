@@ -150,7 +150,7 @@ def render_automation_timeline(
         raise ValueError(f"Unsupported sample rate: {sr}")
     audio = _to_stereo(audio)
     duration = len(audio) / sr
-    if timeline.duration_seconds > duration + (1.0 / sr):
+    if timeline.duration_seconds > duration + max(1.0 / sr, 0.00051):
         raise ValueError(
             f"Timeline duration ({timeline.duration_seconds:.3f}s) exceeds track duration ({duration:.3f}s)."
         )
