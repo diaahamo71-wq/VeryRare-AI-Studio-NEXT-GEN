@@ -1,47 +1,20 @@
-# Secrets and local configuration
-.env
-.env.*
-!.env.example
-*.pem
-*.key
-secrets/
-
-# User audio and model artifacts (do not commit private data)
-*.wav
-*.flac
-*.mp3
-*.m4a
-*.ogg
-*.opus
-*.aiff
-*.aif
-*.pth
-*.index
-*.onnx
-*.safetensors
-models/
-recordings/
-exports/
-
 # Python
 __pycache__/
 *.py[cod]
+.pytest_cache/
 .venv/
 venv/
-.pytest_cache/
-.mypy_cache/
 
-# Node / frontend
-node_modules/
-dist/
-build/
-.turbo/
+# Local secrets and runtime outputs
+.env
+.env.*
+!.env.example
+workspace/*
+!workspace/.gitkeep
+*.report.json
 
-# Rust
-/target/
-
-# OS / editor
-.DS_Store
-Thumbs.db
+# Editors and OS
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
