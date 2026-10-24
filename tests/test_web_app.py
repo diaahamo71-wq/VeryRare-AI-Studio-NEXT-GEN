@@ -97,3 +97,27 @@ def test_import_and_mix_routes_create_new_wav_files(tmp_path, monkeypatch):
     preview = client.get(result["audio_url"])
     assert preview.status_code == 200
     assert preview.headers["content-type"].startswith("audio/wav")
+
+
+def test_plan_endpoint_is_advisory_and_local_by_default(monkeypatch):
+    from app import agent_router
+
+    def fake_plan(prompt, config):
+        assert prompt == "Keep the vocal soft and clear."
+        assert config.allow_cloud is False
+        return {
+            "agent": "local",
+            "summary": "A restrained vocal chain.",
+            "operations": [],
+            "needs_user_input": [],
+        }
+
+    monkeypatch.setattr(agent_router, "plan_with_agent", fake_plan)
+    response = TestClient(web_app.app).post(
+        "/api/plan",
+        json={"prompt": "Keep the vocal soft and clear.", "allow_cloud_fallback": False},
+    )
+    assert response.status_code == 200
+    assert response.json()["planned"] is True
+    assert response.json()["executed"] is False
+    assert response.json()["cloud_fallback_enabled"] is False
