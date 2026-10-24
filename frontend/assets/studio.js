@@ -124,6 +124,59 @@ $("render-btn").addEventListener("click", async () => {
     updateActions();
   }
 });
+
+$("production-brief").addEventListener("input", () => {
+  $("plan-btn").disabled = $("production-brief").value.trim().length < 3;
+});
+$("plan-btn").disabled = true;
+$("plan-btn").addEventListener("click", async () => {
+  const prompt = $("production-brief").value.trim();
+  if (prompt.length < 3) return;
+  const button = $("plan-btn");
+  const resultBox = $("plan-result");
+  button.disabled = true; button.textContent = "Planning…";
+  resultBox.hidden = false; resultBox.textContent = "Asking the configured text planner. Audio files are not sent.";
+  try {
+    const response = await api("/api/plan", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({prompt, allow_cloud_fallback: $("allow-cloud").checked})
+    });
+    const plan = response.plan || {};
+    resultBox.innerHTML = "";
+    const title = document.createElement("h4");
+    title.textContent = plan.summary || "Effect plan";
+    resultBox.append(title);
+    const agent = document.createElement("p");
+    agent.textContent = "Planner: " + (plan.agent || "unknown") + " · Execution: not run";
+    resultBox.append(agent);
+    (Array.isArray(plan.operations) ? plan.operations : []).forEach((operation, index) => {
+      const item = document.createElement("div"); item.className = "plan-operation";
+      const name = document.createElement("strong");
+      name.textContent = (index + 1) + ". " + (operation.capability || "Suggested operation") + " · " + (operation.track || "track");
+      const reason = document.createElement("p");
+      reason.textContent = (operation.reason || operation.parameter_intent || "No rationale provided.") + (operation.plugin_name_or_id ? " · Plugin: " + operation.plugin_name_or_id : "");
+      item.append(name, reason); resultBox.append(item);
+    });
+    if (Array.isArray(plan.needs_user_input) && plan.needs_user_input.length) {
+      const needs = document.createElement("p"); needs.className = "plan-warning";
+      needs.textContent = "Needs your input: " + plan.needs_user_input.join("; ");
+      resultBox.append(needs);
+    }
+    if (plan.error) {
+      const error = document.createElement("p"); error.className = "plan-warning"; error.textContent = plan.error; resultBox.append(error);
+    }
+    const note = document.createElement("p"); note.textContent = response.notice || "Plan is advisory only."; resultBox.append(note);
+    showMessage(response.planned ? "Advisory effect plan created. Review it before applying anything." : "Local planner unavailable; check that Ollama is running and the configured model is installed.", response.planned ? "success" : "");
+  } catch (error) {
+    resultBox.textContent = error.message;
+    showMessage(error.message, "error");
+  } finally {
+    button.disabled = $("production-brief").value.trim().length < 3;
+    button.innerHTML = 'Create effect plan <span>✧</span>';
+  }
+});
+
 function renderHistory() {
   const host = $("activity-list"); host.innerHTML = "";
   if (!state.renders.length) { host.innerHTML = '<div class="empty-state">No renders yet. Your first mix will show up here.</div>'; return; }
