@@ -280,8 +280,16 @@ $("production-brief").addEventListener("input", () => {
 });
 $("plan-btn").disabled = true;
 $("plan-btn").addEventListener("click", async () => {
-  const prompt = $("production-brief").value.trim();
-  if (prompt.length < 3) return;
+  const userGoal = $("production-brief").value.trim();
+  if (userGoal.length < 3) return;
+  const trackContext = state.vocal && state.beat && state.beatB
+    ? "\nImported track metadata (the planner cannot hear the files):"
+      + "\nVocal: " + state.vocal.original_name + " — " + metaText(state.vocal.analysis)
+      + "\nBeat A: " + state.beat.original_name + " — " + metaText(state.beat.analysis)
+      + "\nBeat B: " + state.beatB.original_name + " — " + metaText(state.beatB.analysis)
+      + "\nCurrently selected render beat: " + ($("render-beat-choice").value === "beat-b" ? "Beat B" : "Beat A")
+    : "\nNo imported track metadata is available yet.";
+  const prompt = userGoal + trackContext;
   const button = $("plan-btn");
   const resultBox = $("plan-result");
   button.disabled = true; button.textContent = "Planning…";
