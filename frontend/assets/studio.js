@@ -393,3 +393,146 @@ api("/api/health").then(data => {
   $("health-text").textContent = "Local engine connected";
   if (data.cloud_audio_upload !== false) $("health-text").textContent = "Check privacy status";
 }).catch(() => { $("health-text").textContent = "Local engine unavailable"; });
+
+
+// Local, realtime browser audition. This graph never uploads or overwrites source files.
+const livePreview = { context: null, source: null, objectUrls: {}, enabled: false, nodes: [] };
+function liveStatus(message) { const el = $("live-preview-status"); if (el) el.textContent = message; }
+function liveFile() {
+  const which = $("live-preview-track")?.value || "vocal";
+  return { which, file: $(which + "-file")?.files?.[0] || null };
+}
+function loadLivePreviewFile() {
+  const {which, file} = liveFile();
+  const audio = $("live-preview-audio");
+  if (!audio) return;
+  if (!file) {
+    audio.removeAttribute("src"); audio.load();
+    liveStatus("Choose a " + (which === "vocal" ? "vocal" : "beat") + " file above first.");
+    $("live-preview-enable").disabled = true;
+    return;
+  }
+  if (livePreview.objectUrls[which]) URL.revokeObjectURL(livePreview.objectUrls[which]);
+  livePreview.objectUrls[which] = URL.createObjectURL(file);
+  audio.src = livePreview.objectUrls[which]; audio.load();
+  $("live-preview-enable").disabled = false;
+  liveStatus("Local preview: " + file.name + ". Press play; changes apply while audio is playing.");
+  if (livePreview.enabled) rebuildLiveGraph();
+}
+function liveNode(node) { livePreview.nodes.push(node); return node; }
+function makeImpulse(context, seconds = 2.8, decay = 2.4) {
+  const length = Math.max(1, Math.floor(context.sampleRate * seconds));
+  const impulse = context.createBuffer(2, length, context.sampleRate);
+  for (let channel = 0; channel < 2; channel++) {
+    const data = impulse.getChannelData(channel);
+    for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+  }
+  return impulse;
+}
+function rebuildLiveGraph() {
+  if (!livePreview.context || !livePreview.source || !livePreview.enabled) return;
+  const ctx = livePreview.context;
+  try { livePreview.source.disconnect(); } catch (_) {}
+  livePreview.nodes.forEach(node => { try { node.disconnect(); } catch (_) {} });
+  livePreview.nodes = [];
+  const preGain = liveNode(ctx.createGain());
+  preGain.gain.value = Math.pow(10, Number($("live-level").value) / 20);
+  const highpass = liveNode(ctx.createBiquadFilter());
+  highpass.type = "highpass";
+  highpass.frequency.value = Number($("highpass")?.value || 80);
+  const presence = liveNode(ctx.createBiquadFilter());
+  presence.type = "peaking"; presence.frequency.value = 3200; presence.Q.value = 0.8;
+  presence.gain.value = Number($("presence")?.value || 0);
+  const comp = liveNode(ctx.createDynamicsCompressor());
+  comp.threshold.value = Number($("threshold")?.value || -18);
+  comp.ratio.value = Number($("compression")?.value || 2);
+  comp.knee.value = 18; comp.attack.value = 0.012; comp.release.value = 0.18;
+  const dry = liveNode(ctx.createGain());
+  const wet = liveNode(ctx.createGain());
+  const master = liveNode(ctx.createGain());
+  const amount = Number($("live-wet").value) / 100;
+  const effect = $("live-preview-effect").value;
+  dry.gain.value = effect === "clean" ? 1 : Math.cos(amount * Math.PI / 2);
+  wet.gain.value = effect === "clean" ? 0 : Math.sin(amount * Math.PI / 2);
+  livePreview.source.connect(preGain);
+  preGain.connect(highpass); highpass.connect(presence); presence.connect(comp);
+  comp.connect(dry); dry.connect(master);
+  if (effect === "telephone") {
+    const band = liveNode(ctx.createBiquadFilter()); band.type = "bandpass"; band.frequency.value = 1550; band.Q.value = 0.65;
+    const shaper = liveNode(ctx.createWaveShaper()); const curve = new Float32Array(2048);
+    for (let i = 0; i < curve.length; i++) { const x = i * 2 / (curve.length - 1) - 1; curve[i] = Math.tanh(2.2 * x) / Math.tanh(2.2); }
+    shaper.curve = curve; shaper.oversample = "2x";
+    comp.connect(band); band.connect(shaper); shaper.connect(wet);
+  } else if (effect === "reverb" || effect === "dreamcore") {
+    const convolver = liveNode(ctx.createConvolver()); convolver.buffer = makeImpulse(ctx, effect === "dreamcore" ? 4.2 : 2.6, effect === "dreamcore" ? 1.8 : 2.8);
+    if (effect === "dreamcore") {
+      const lowpass = liveNode(ctx.createBiquadFilter()); lowpass.type = "lowpass"; lowpass.frequency.value = 7200;
+      comp.connect(lowpass); lowpass.connect(convolver);
+    } else comp.connect(convolver);
+    convolver.connect(wet);
+  } else if (effect === "delay") {
+    const delay = liveNode(ctx.createDelay(1.5)); delay.delayTime.value = Number($("delay-time")?.value || 260) / 1000;
+    const feedback = liveNode(ctx.createGain()); feedback.gain.value = 0.28;
+    comp.connect(delay); delay.connect(feedback); feedback.connect(delay); delay.connect(wet);
+  } else {
+    comp.connect(wet); wet.gain.value = 0;
+  }
+  if (effect === "dreamcore") {
+    const delay = liveNode(ctx.createDelay(1.5)); delay.delayTime.value = 0.32;
+    const feedback = liveNode(ctx.createGain()); feedback.gain.value = 0.18;
+    wet.connect(delay); delay.connect(feedback); feedback.connect(delay); delay.connect(master);
+  } else wet.connect(master);
+  master.connect(ctx.destination);
+}
+async function enableLivePreview() {
+  const {file} = liveFile();
+  if (!file) { liveStatus("Choose a vocal or beat file above first."); return; }
+  const audio = $("live-preview-audio");
+  try {
+    if (!livePreview.context) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) throw new Error("This browser does not support Web Audio.");
+      livePreview.context = new AudioContextClass();
+      livePreview.source = livePreview.context.createMediaElementSource(audio);
+    }
+    await livePreview.context.resume();
+    livePreview.enabled = true; rebuildLiveGraph();
+    $("live-preview-bypass").disabled = false;
+    $("live-preview-enable").textContent = "Realtime effects enabled ✓";
+    liveStatus("Realtime effects are active. Change the effect or amount while playback continues.");
+  } catch (error) { liveStatus("Realtime preview error: " + error.message); }
+}
+function bypassLivePreview() {
+  if (!livePreview.context || !livePreview.source) return;
+  livePreview.enabled = false;
+  try { livePreview.source.disconnect(); } catch (_) {}
+  livePreview.source.connect(livePreview.context.destination);
+  livePreview.nodes.forEach(node => { try { node.disconnect(); } catch (_) {} });
+  livePreview.nodes = [];
+  $("live-preview-enable").textContent = "Enable realtime effects";
+  $("live-preview-bypass").disabled = true;
+  liveStatus("Effects bypassed. Audio plays cleanly; enable effects to audition again.");
+}
+if ($("live-preview-enable")) {
+  $("live-preview-enable").addEventListener("click", enableLivePreview);
+  $("live-preview-bypass").addEventListener("click", bypassLivePreview);
+  $("live-preview-track").addEventListener("change", loadLivePreviewFile);
+  $("live-preview-effect").addEventListener("change", () => { if (livePreview.enabled) rebuildLiveGraph(); });
+  $("live-wet").addEventListener("input", () => {
+    $("live-wet-out").textContent = $("live-wet").value + "%";
+    if (livePreview.enabled) rebuildLiveGraph();
+  });
+  $("live-level").addEventListener("input", () => {
+    $("live-level-out").textContent = $("live-level").value + " dB";
+    if (livePreview.enabled) rebuildLiveGraph();
+  });
+  ["highpass", "presence", "compression", "threshold", "delay-time"].forEach(id => {
+    $(id)?.addEventListener("input", () => { if (livePreview.enabled) rebuildLiveGraph(); });
+  });
+  ["vocal-file", "beat-file"].forEach(id => $(id)?.addEventListener("change", () => {
+    const current = $("live-preview-track").value;
+    if (id === current + "-file") loadLivePreviewFile();
+  }));
+  window.addEventListener("beforeunload", () => Object.values(livePreview.objectUrls).forEach(url => URL.revokeObjectURL(url)));
+  loadLivePreviewFile();
+}
