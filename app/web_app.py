@@ -164,14 +164,14 @@ def render_mix(request: MixRequest) -> dict:
     )
     try:
         reference_settings = MixSettings(
-            vocal_gain_db=0.0,
-            instrumental_gain_db=0.0,
+            vocal_gain_db=request.vocal_gain_db,
+            instrumental_gain_db=request.beat_gain_db,
             vocal_highpass_hz=20.0,
             vocal_presence_db=0.0,
             compression_ratio=1.0,
             reverb_mix=0.0,
             delay_mix=0.0,
-            master_peak_dbfs=-0.1,
+            master_peak_dbfs=request.master_peak_dbfs,
         )
         reference_report = mix_tracks(vocal_path, beat_path, reference_path, reference_settings)
         report = mix_tracks(vocal_path, beat_path, output_path, settings)
@@ -181,7 +181,7 @@ def render_mix(request: MixRequest) -> dict:
             "audio_url": f"/api/audio/{output_name}",
             "reference_file": reference_name,
             "reference_url": f"/api/audio/{reference_name}",
-            "reference_note": "Neutral gain-balanced reference blend with a protective peak ceiling; not a bit-perfect bypass.",
+            "reference_note": "Effects-bypassed reference using the same track gains and peak ceiling; not a bit-perfect bypass.",
             "reference_report": reference_report,
             "report": report,
         }
