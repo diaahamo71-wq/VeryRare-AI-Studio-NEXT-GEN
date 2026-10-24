@@ -64,3 +64,8 @@ See [AI audio engineering contract](docs/AI_AUDIO_ENGINEERING_CONTRACT.md) for t
 The local UI accepts WAV and MP3 uploads. MP3 files are decoded locally to a working 24-bit PCM WAV copy; the original upload is not modified and audio is not sent to cloud services. MP3 decoding uses the `miniaudio` Python package listed in `requirements.txt`.
 
 Use **Scan installed VST3 plugins** in the time-local effects panel to discover plugins in the standard Windows VST3 folder. A compatible installed VST3 effect such as a Valhalla reverb may then be selected for a timed segment. Plugin compatibility depends on Pedalboard and the plugin; third-party plugins are not sandboxed, so use only trusted plugins and test with a copy of your audio. Plugins installed in non-standard folders are not automatically found by this UI version.
+
+
+### Lightweight official plugin catalog
+
+The Effects Library includes a curated catalog of small free Windows VST3 packages from the developer's official NORMSONIC downloads page: ULTRAVERB, ECHO ATLAS, CHORUS BLOOM, DYNAMO CORE, SPECTRUM WEAVE and VOCAL PILOT. Package sizes displayed are publisher-listed ZIP sizes; installed size may differ. Analog Forge is also listed as an optional larger download. The catalog links to the official download page and does not automatically download or install executable plugin code. After installing, use **Scan installed VST3 plugins** and test the selected plugin on a short copy of the vocal. Discovery alone does not prove that a plugin loads or that its output sounds correct.
