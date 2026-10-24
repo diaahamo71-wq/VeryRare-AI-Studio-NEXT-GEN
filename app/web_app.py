@@ -18,6 +18,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from app.audio_engine import MixSettings, analyze_file, mix_tracks
+from app.automation_timeline import AutomationTimeline
+from app.automation_renderer import render_automation_timeline
 
 ROOT = Path(__file__).resolve().parents[1]
 UI_DIR = ROOT / "frontend"
@@ -105,6 +107,19 @@ async def _save_upload(upload: UploadFile) -> dict:
         raise HTTPException(status_code=422, detail=f"Could not read a valid WAV file: {type(exc).__name__}: {exc}") from exc
     finally:
         await upload.close()
+
+
+class AutomationRenderRequest(BaseModel):
+    track_file: str = Field(min_length=1, max_length=200)
+    track_id: str = Field(default="vocal", min_length=1, max_length=80)
+    timeline_json: str = Field(min_length=2, max_length=250_000)
+
+    @field_validator("track_file")
+    @classmethod
+    def validate_track_filename(cls, value: str) -> str:
+        if Path(value).name != value or value in {".", ".."} or "/" in value or chr(92) in value:
+            raise ValueError("Track reference must be a workspace file name, not a filesystem path.")
+        return value
 
 
 @app.get("/")
@@ -228,6 +243,35 @@ def plan_effects(request: PlanRequest) -> dict:
         "plan": plan,
         "notice": "Advisory plan only. No audio was uploaded and no effects were executed by this endpoint.",
     }
+
+
+@app.post("/api/render-timeline")
+def render_timeline(request: AutomationRenderRequest) -> dict:
+    """Render time-local built-in effects on one imported track; no cloud processing."""
+    track_path = _safe_workspace_file(request.track_file)
+    timeline = AutomationTimeline.model_validate_json(request.timeline_json)
+    if any(event.enabled and event.effect_kind == "vst3" for event in timeline.events):
+        raise HTTPException(
+            status_code=422,
+            detail="The browser timeline currently supports built-in effects only. Use the local MCP tool for inspected VST3 plugins.",
+        )
+    output_name = f"VeryRare-Segment-{uuid.uuid4().hex[:10]}.wav"
+    output_path = _safe_workspace_file(output_name, must_exist=False)
+    try:
+        report = render_automation_timeline(
+            track_path, output_path, request.timeline_json, track_id=request.track_id,
+            allowed_plugin_paths=set(),
+        )
+        return {
+            "rendered": True,
+            "output_file": output_name,
+            "audio_url": f"/api/audio/{output_name}",
+            "report": report,
+        }
+    except Exception as exc:
+        output_path.unlink(missing_ok=True)
+        output_path.with_suffix(".automation-report.json").unlink(missing_ok=True)
+        raise HTTPException(status_code=422, detail=f"Automation render failed: {type(exc).__name__}: {exc}") from exc
 
 
 @app.get("/api/capabilities")
