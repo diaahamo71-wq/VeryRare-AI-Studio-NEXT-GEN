@@ -18,6 +18,7 @@ from mcp.server.fastmcp import FastMCP
 from app.audio_engine import analyze_file
 from app.vst3_host import inspect_plugin, render_vst3, scan_vst3_paths
 from app.plugin_chain import render_chain
+from app.automation_timeline import validate_timeline_json
 
 mcp = FastMCP(
     "VeryRare AI Studio",
@@ -178,6 +179,25 @@ def render_vst3_effect_chain(
             manifest.unlink(missing_ok=True)
         except OSError:
             pass
+
+
+@mcp.tool()
+def validate_automation_timeline(timeline_json: str) -> dict[str, Any]:
+    """Validate an AI-proposed effect timeline before rendering.
+
+    This tool checks event timing, unique IDs, supported event kinds, fade lengths,
+    and schema safety. It does not render audio or guarantee a plugin is compatible.
+    """
+    result = validate_timeline_json(timeline_json)
+    for event in result["events"]:
+        if event.get("effect_kind") == "vst3":
+            try:
+                event["plugin_path"] = str(_safe_plugin_path(event["plugin_path"]))
+                event["plugin_discovered"] = True
+            except Exception as exc:
+                event["plugin_discovered"] = False
+                event["plugin_validation_error"] = f"{type(exc).__name__}: {exc}"
+    return result
 
 
 if __name__ == "__main__":
