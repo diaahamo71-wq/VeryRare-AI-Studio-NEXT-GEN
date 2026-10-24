@@ -297,6 +297,46 @@ def list_installed_plugins() -> dict:
     }
 
 
+
+@app.get("/api/plugin-catalog")
+def plugin_catalog() -> dict:
+    """Curated small free Windows VST3 packages from the developer's official page."""
+    items = [
+        {"id": "ultraverb", "name": "ULTRAVERB", "category": "Reverb", "zip_mib": 1.18,
+         "purpose": "Intimate ambience, spacious reverb and creative vocal tails.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+        {"id": "echo-atlas", "name": "ECHO ATLAS", "category": "Delay / echo", "zip_mib": 1.18,
+         "purpose": "Tape-like, reverse, diffuse and stereo echoes for timed vocal throws.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+        {"id": "chorus-bloom", "name": "CHORUS BLOOM", "category": "Chorus / pitch movement", "zip_mib": 1.22,
+         "purpose": "Subtle vocal width, micro-detune and dreamlike movement.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+        {"id": "dynamo-core", "name": "DYNAMO CORE", "category": "Compression", "zip_mib": 1.20,
+         "purpose": "Control vocal dynamics while retaining quiet phrases.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+        {"id": "spectrum-weave", "name": "SPECTRUM WEAVE", "category": "Dynamic EQ", "zip_mib": 1.24,
+         "purpose": "Tame harsh frequencies and shape a smoother vocal tone.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+        {"id": "vocal-pilot", "name": "VOCAL PILOT", "category": "Vocal level automation", "zip_mib": 1.16,
+         "purpose": "Phrase-level gain riding for more even, intimate vocals.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+        {"id": "analog-forge", "name": "Analog Forge", "category": "Saturation / lo-fi", "zip_mib": 12.46,
+         "purpose": "Warmth, cassette-like softness and creative distortion.",
+         "official_url": "https://normsonic.com/downloads/", "vendor": "NORMSONIC",
+         "format": "VST3 + standalone", "status": "download_required"},
+    ]
+    return {
+        "plugins": items,
+        "source": "Official NORMSONIC downloads page",
+        "notice": "Sizes are published ZIP package sizes, not installed size. Download and install manually from the official site; this app does not silently download or install third-party executable code."
+    }
+
 @app.get("/api/capabilities")
 def capabilities() -> dict:
     from app.plugin_catalog import CAPABILITIES
