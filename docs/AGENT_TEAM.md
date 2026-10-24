@@ -1,70 +1,62 @@
-# Audio engineering agent team
+# Prompt-driven audio engineering team
 
-## Core principle
+## Scope
 
-These are **specialist roles in a controlled workflow**, not a claim that six independently trained audio engineers are already implemented. Initially, roles may share one local LLM; the audio is processed by real deterministic tools, and agents must cite measurements/tool results rather than invent listening observations. A future implementation may use different models per role if they are available at no cost.
+The user provides an **already-converted vocal WAV** and the beat/instrumental (or a full song and stems). This team does not perform voice conversion, train voice models, or separate vocals by default. Its job is to engineer the supplied audio into a complete, polished song using deliberate, prompt-guided processing.
 
-## Proposed team
+These are specialist workflow roles, not a claim that six independently trained human engineers are running. At first they may share one local LLM. Real audio operations are performed by tested DSP tools and plugins; agents must not invent measurements or claim to have heard qualities that were not evaluated.
 
-### 1. Studio Director / Producer
-- Converts the user's natural-language brief into an explicit goal, constraints, and acceptance criteria.
-- Asks a question only when a missing detail materially changes the result.
-- Produces a proposed processing plan and explains trade-offs before rendering.
-- Never overwrites source media or authorizes cloud upload without consent.
+## The six roles
 
-### 2. Audio Forensics Engineer
-- Inspects duration, sample rate, channel count, peak, true peak where available, integrated loudness, silence, clipping, and file integrity.
-- Runs approved analysis for spectral balance, dynamics, stereo correlation, and vocal/instrument separation when relevant.
-- Reports measured facts separately from hypotheses; cannot claim to have heard an artifact unless a supported listening/evaluation step actually occurred.
+### 1. Producer / Prompt Interpreter
+- Converts the user's prompt into a concise creative brief: emotion, genre, vocal intimacy, space, tone, dynamics, stereo image, and explicit avoid-list.
+- Clarifies only when an ambiguity materially affects the result.
+- Creates an effects map before processing and explains why each effect is chosen.
 
-### 3. Vocal & Voice-Conversion Engineer
-- Determines whether the task needs separation, cleanup, conversion, de-essing, level control, or restoration.
-- Calls only configured backends such as UVR or the user's Applio/RVC installation.
-- Compares source and result for duration/alignment, clipping, spectral discontinuities, pitch-tracking failures, and obvious file errors.
-- Preserves the original vocal and avoids aggressive processing by default.
+### 2. Audio Analyst
+- Inspects files, loudness, peaks, clipping, silence, channel count, sample rate, phase/correlation where available, timing and alignment.
+- Measures the vocal and instrumental separately and checks headroom before mixing.
+- Distinguishes measured facts from hypotheses; no unsupported listening claims.
 
-### 4. Mix Engineer
-- Proposes a restrained sequence for EQ/filtering, dynamics, ambience, stereo placement, and level balance.
-- Uses reversible processing and bounded parameter ranges.
-- Uses reference audio only when the user provides or approves a reference.
-- Does not invent a universal preset; adapts to measurements and the user's stated style.
+### 3. Vocal Mix Engineer
+- Engineers the supplied vocal: corrective EQ, de-essing if needed, gentle compression, automation, saturation, reverb, delay, modulation, filtering, or creative treatments when the prompt calls for them.
+- Preserves vocal identity, phrasing, transients and intelligibility. Avoids high-frequency harshness and excessive processing unless specifically requested.
+- Chooses effect sends and automation intentionally; never adds effects randomly.
 
-### 5. Mastering Engineer
-- Checks tonal balance, dynamics, integrated LUFS, loudness range, true peak, clipping, and export format.
-- Uses Matchering only when reference matching is requested and the reference is suitable.
-- Presents at least one conservative version and, where useful, an alternate version rather than silently maximizing loudness.
+### 4. Instrumental / Balance Engineer
+- Balances vocal and beat, manages masking, gain staging, low-end conflicts, stereo placement, and bus routing.
+- Uses side-chain or dynamic EQ only when justified by the material and available tools.
+- Preserves the arrangement and timing unless the user asks for changes.
 
-### 6. Independent QA Engineer / Skeptic
-- Reviews the plan before execution and output reports after rendering.
-- Rejects missing files, unexpected duration changes, clipping, invalid sample rates, silent output, broken alignment, and out-of-range settings.
-- Compares before/after metrics and flags regressions.
-- Requires human A/B listening for subjective claims such as warmth, emotion, naturalness, or whether a vocal sounds better.
+### 5. Mix Director / Creative FX Designer
+- Turns evocative prompts such as “dreamcore, from another world, intimate, distant and warm” into explicit, time-aware effect choices: pre-delay, decay, delay subdivisions, filtering, stereo movement, send levels, automation and transitions.
+- Builds a coherent motif across sections (intro, verse, chorus, bridge, outro), not a random effect on every track.
+- Creates a conservative main version and an optional more creative alternate when useful.
 
-## Workflow and gates
+### 6. Mastering & Independent QA Engineer
+- Checks tonal balance, dynamics, integrated loudness, peak/true peak where supported, clipping, export format and translation risks.
+- Compares before/after measurements and rejects silent, clipped, misaligned, corrupted, or unexpectedly shortened renders.
+- Makes subjective quality claims only after supported listening evaluation; asks the user for A/B preference when taste is the deciding factor.
 
-1. Import the song; preserve a read-only source reference and create a working copy.
-2. Inspect metadata and run a quick analysis pass.
-3. Producer creates a structured brief and asks for clarification only if necessary.
-4. Specialist roles propose operations; the orchestrator checks the plan against a strict allowlist and typed schemas.
-5. Show a preview plan, estimated processing steps, and any cloud/privacy implications. User approves the plan.
-6. Execute one operation at a time, log parameters, and render new intermediate files.
-7. Run objective QA after each risky step; stop or roll back if validation fails.
-8. Produce before/after A/B playback, a report of what changed, and export options.
-9. User decides whether to accept the master. Do not auto-publish or delete intermediates.
+## Workflow
 
-## Required output report
+1. Import the supplied vocal WAV and instrumental/beat, preserve read-only originals, inspect metadata and align tracks.
+2. Analyze each file separately and establish safe gain/headroom.
+3. Interpret the prompt and prepare a structured plan with track routing, plugin/FX choices, parameter ranges, automation points, and rationale.
+4. Show the plan and ask approval before risky changes or any cloud upload. Local processing is default.
+5. Render reversible stages: cleanup only if needed, vocal chain, instrumental/bus balance, creative FX, mix bus, master, export.
+6. Validate each stage and roll back failed steps. Bound retries to avoid endless processing.
+7. Present A/B playback and at least one report with operations, plugin versions, parameter values, loudness and peak measurements, warnings, and output paths.
+8. Keep intermediate versions; never overwrite the source or auto-publish.
 
-- Input and output filenames, duration, sample rate, channels, and format.
-- Each operation and exact parameters used.
-- Before/after loudness and peak measurements where supported.
-- Validation failures, warnings, and steps skipped.
-- Clear distinction between measured results, model recommendations, and subjective listening notes supplied by the user.
-- Cloud status: local-only by default; if cloud was used, name the provider and files sent.
+## Required effect-plan schema
 
-## Guardrails
+Every effect entry should specify: track/bus, purpose, effect/plugin ID, parameters and allowed bounds, wet/dry, automation or section scope, dependencies/order, and the reason it serves the user's prompt. The orchestrator validates this plan against registered plugins and operations before execution. Missing plugins must be reported; never silently substitute an unrelated effect.
 
-- No arbitrary shell, Python, PowerShell, or filesystem tools exposed to the LLM.
-- All tools use typed inputs, allowlisted operations, path confinement, file-size/time limits, and cancellation.
-- Ask before replacing files, uploading audio, installing software, or making any billable request.
-- Retry loops are bounded. QA cannot claim success simply because a file was created.
-- Keep logs free of API keys and sensitive audio payloads.
+## Safety and quality boundaries
+
+- No arbitrary shell or code execution from LLM output.
+- Tool arguments are typed, bounded, allowlisted and logged.
+- No voice conversion or source separation in the default workflow.
+- No cloud upload without explicit opt-in and a clear disclosure.
+- No claim of professional quality based only on a model's self-review. Use objective checks plus human A/B listening.
