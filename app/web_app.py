@@ -161,14 +161,25 @@ def health() -> dict:
 async def import_audio(
     vocal: Annotated[UploadFile, File()],
     beat: Annotated[UploadFile, File()],
+    beat_b: Annotated[UploadFile | None, File()] = None,
 ) -> dict:
-    vocal_result = await _save_upload(vocal)
+    """Import a vocal and one or two alternative beats; each source is stored separately."""
+    saved: list[dict] = []
     try:
+        vocal_result = await _save_upload(vocal)
+        saved.append(vocal_result)
         beat_result = await _save_upload(beat)
+        saved.append(beat_result)
+        response = {"vocal": vocal_result, "beat": beat_result}
+        if beat_b is not None and (beat_b.filename or "").strip():
+            beat_b_result = await _save_upload(beat_b)
+            saved.append(beat_b_result)
+            response["beat_b"] = beat_b_result
+        return response
     except Exception:
-        _safe_workspace_file(vocal_result["file"], must_exist=False).unlink(missing_ok=True)
+        for item in saved:
+            _safe_workspace_file(item["file"], must_exist=False).unlink(missing_ok=True)
         raise
-    return {"vocal": vocal_result, "beat": beat_result}
 
 
 @app.get("/api/analyze/{filename}")
