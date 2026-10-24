@@ -1,4 +1,4 @@
-const state = { vocal: null, beat: null, renders: [] };
+const state = { vocal: null, beat: null, renders: [], timelineEvents: [] };
 const $ = (id) => document.getElementById(id);
 const fields = {
   "vocal-gain": ["vocal-gain-out", v => Number(v).toFixed(1) + " dB"],
@@ -28,6 +28,7 @@ function updateActions() {
   const canImport = $("vocal-file").files.length > 0 && $("beat-file").files.length > 0;
   $("import-btn").disabled = !canImport;
   $("render-btn").disabled = !(state.vocal && state.beat);
+  updateTimelineActions();
 }
 function showTrack(which, file) {
   $(which + "-name").textContent = file.name;
@@ -122,6 +123,125 @@ $("render-btn").addEventListener("click", async () => {
   } finally {
     button.disabled = false; button.innerHTML = '<span class="button-star">✦</span> Render mix <span class="button-arrow">→</span>';
     updateActions();
+  }
+});
+
+
+function selectedTimelineTrack() {
+  return $("timeline-track").value === "beat" ? state.beat : state.vocal;
+}
+function timelineTrackId() {
+  return $("timeline-track").value;
+}
+function updateTimelineActions() {
+  const track = selectedTimelineTrack();
+  const hasEvents = state.timelineEvents.some(event => event.track_id === timelineTrackId());
+  const button = $("render-timeline-btn");
+  if (button) button.disabled = !(track && hasEvents);
+}
+function showTimelineMessage(text, kind = "") {
+  const el = $("timeline-message");
+  el.hidden = !text;
+  el.className = "message" + (kind ? " " + kind : "");
+  el.textContent = text;
+}
+function renderTimelineEventList() {
+  const host = $("timeline-events");
+  host.innerHTML = "";
+  const visible = state.timelineEvents.filter(event => event.track_id === timelineTrackId());
+  if (!visible.length) {
+    const empty = document.createElement("div"); empty.className = "empty-state";
+    empty.textContent = "No effect segments for this track yet. Add one above.";
+    host.append(empty);
+  }
+  visible.forEach(event => {
+    const row = document.createElement("div"); row.className = "timeline-event";
+    const description = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = ({builtin_telephone:"Telephone / radio",builtin_reverb:"Reverb",builtin_delay:"Delay / echo",builtin_eq:"EQ / filtered tone",builtin_compressor:"Compressor"}[event.effect_kind] || event.effect_kind);
+    const detail = document.createElement("p");
+    detail.textContent = event.start_seconds.toFixed(2) + "–" + event.end_seconds.toFixed(2) + " sec · wet " + Math.round(event.wet * 100) + "% · fades " + event.fade_in_seconds + "/" + event.fade_out_seconds + " sec";
+    description.append(title, detail);
+    const remove = document.createElement("button"); remove.className = "button button-secondary";
+    remove.type = "button"; remove.textContent = "Remove";
+    remove.addEventListener("click", () => {
+      state.timelineEvents = state.timelineEvents.filter(item => item.event_id !== event.event_id);
+      renderTimelineEventList(); updateTimelineActions();
+    });
+    row.append(description, remove); host.append(row);
+  });
+  updateTimelineActions();
+}
+$("event-wet").addEventListener("input", () => {
+  $("event-wet-out").textContent = $("event-wet").value + "%";
+});
+$("timeline-track").addEventListener("change", () => {
+  renderTimelineEventList();
+  showTimelineMessage("");
+});
+$("add-event-btn").addEventListener("click", () => {
+  const track = selectedTimelineTrack();
+  if (!track) {
+    showTimelineMessage("Import your vocal and beat first.", "error");
+    return;
+  }
+  const start = Number($("event-start").value);
+  const end = Number($("event-end").value);
+  const wet = Number($("event-wet").value) / 100;
+  const fadeIn = Number($("event-fade-in").value);
+  const fadeOut = Number($("event-fade-out").value);
+  const duration = Number(track.analysis.duration_seconds);
+  if (![start, end, wet, fadeIn, fadeOut, duration].every(Number.isFinite) ||
+      start < 0 || end <= start || end > duration + 0.0005 ||
+      fadeIn < 0 || fadeOut < 0 || fadeIn + fadeOut > end - start) {
+    showTimelineMessage("Check the timestamps and fades. End must be after start and within the selected track duration (" + duration.toFixed(2) + " sec).", "error");
+    return;
+  }
+  const effect = $("timeline-effect").value;
+  let parameters = {};
+  if (effect === "builtin_reverb") parameters = {room_size: 0.35, damping: 0.5, width: 1.0};
+  if (effect === "builtin_delay") parameters = {delay_seconds: 0.28, feedback: 0.25};
+  state.timelineEvents.push({
+    event_id: timelineTrackId() + "-" + Date.now() + "-" + state.timelineEvents.length,
+    track_id: timelineTrackId(), effect_kind: effect,
+    start_seconds: start, end_seconds: end, wet,
+    fade_in_seconds: fadeIn, fade_out_seconds: fadeOut,
+    parameters, enabled: true, decision_source: "user"
+  });
+  renderTimelineEventList();
+  showTimelineMessage("Segment added. You can add more effects, then render this track.", "success");
+});
+$("render-timeline-btn").addEventListener("click", async () => {
+  const track = selectedTimelineTrack();
+  const trackId = timelineTrackId();
+  const events = state.timelineEvents.filter(event => event.track_id === trackId);
+  if (!track || !events.length) return;
+  const button = $("render-timeline-btn");
+  button.disabled = true; button.textContent = "Rendering segment effects…";
+  showTimelineMessage("Rendering effects locally on the selected track. Source audio remains unchanged.");
+  const timeline = {
+    version: 1, project_name: "VeryRare segment render",
+    duration_seconds: Number(track.analysis.duration_seconds),
+    events
+  };
+  try {
+    const result = await api("/api/render-timeline", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({track_file: track.file, track_id: trackId, timeline_json: JSON.stringify(timeline)})
+    });
+    if (result.rendered !== true || !result.output_file) throw new Error("The engine did not confirm a successful render.");
+    $("timeline-result-name").textContent = result.output_file + " · " + result.report.event_count + " event(s)";
+    $("timeline-audio").src = result.audio_url;
+    $("timeline-download").href = result.audio_url;
+    $("timeline-download").download = result.output_file;
+    $("timeline-result").hidden = false;
+    showTimelineMessage("Segment render completed. Listen to it before using it in your final mix.", "success");
+  } catch (error) {
+    showTimelineMessage(error.message, "error");
+  } finally {
+    button.textContent = "Render selected track →";
+    updateTimelineActions();
   }
 });
 
