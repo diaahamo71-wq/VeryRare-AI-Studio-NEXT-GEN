@@ -59,6 +59,19 @@ python -m app.cli vst3-chain --input "D:\Audio\vocal.wav" --output "D:\Audio\voc
 
 Use only plugins you trust and have permission to use. Pedalboard is GPL-3.0; review licensing before distributing the app as closed-source or bundling it into another product. Third-party plugin licenses remain separate.
 
+## MCP server for Claude and compatible clients
+
+Install dependencies, then set the audio workspace to a folder containing your WAV files:
+
+```powershell
+$env:VERYRARE_AUDIO_ROOT = "D:\\VeryRareAudio"
+python -m app.mcp_server
+```
+
+The server uses MCP stdio transport, suitable for local MCP clients such as Claude Desktop. Configure the client to launch the command from the repository directory using the same Python environment. Tools include studio status, plugin scan/inspect, WAV analysis, single-plugin render, and sequential VST3 chain render. Paths are restricted to the configured audio workspace; plugin paths must match discovered VST3 bundles. Outputs are not overwritten silently.
+
+To use the server with ChatGPT, product/account support and connection method matter. ChatGPT custom MCP availability is restricted by plan/workspace and may require a remotely reachable HTTPS endpoint or Secure MCP Tunnel. A local stdio server is not automatically connected to this chat. See the official docs: https://help.openai.com/en/articles/12584461-connecting-custom-mcp-servers-in-chatgpt
+
 ## AI agent planner
 
 Local-only planning (requires Ollama running and the selected model installed):
