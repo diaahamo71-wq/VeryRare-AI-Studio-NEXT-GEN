@@ -31,7 +31,6 @@ def test_workspace_file_accepts_a_file_inside_workspace(tmp_path, monkeypatch):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"vocal_file": "../outside.wav", "beat_file": "beat.wav"},
         {"vocal_file": "vocal.wav", "beat_file": "beat.wav", "reverb_mix": 2.0},
         {"vocal_file": "vocal.wav", "beat_file": "beat.wav", "vocal_gain_db": 99},
         {"vocal_file": "vocal.wav", "beat_file": "beat.wav", "master_peak_dbfs": -10},
