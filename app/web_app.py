@@ -16,10 +16,14 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
+import miniaudio
+import numpy as np
+import soundfile as sf
 
 from app.audio_engine import MixSettings, analyze_file, mix_tracks
 from app.automation_timeline import AutomationTimeline
 from app.automation_renderer import render_automation_timeline
+from app.vst3_host import scan_vst3_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 UI_DIR = ROOT / "frontend"
@@ -77,14 +81,17 @@ def _safe_workspace_file(name: str, *, must_exist: bool = True) -> Path:
 
 async def _save_upload(upload: UploadFile) -> dict:
     original = Path(upload.filename or "audio.wav").name
-    if Path(original).suffix.lower() != ".wav":
-        raise HTTPException(status_code=415, detail="For this MVP, upload WAV files only.")
+    suffix = Path(original).suffix.lower()
+    if suffix not in {".wav", ".mp3"}:
+        raise HTTPException(status_code=415, detail="Supported audio formats are WAV and MP3.")
     safe_stem = re.sub(r"[^A-Za-z0-9_-]+", "-", Path(original).stem).strip("-_")[:48] or "audio"
-    name = f"{safe_stem}-{uuid.uuid4().hex[:10]}.wav"
+    token = uuid.uuid4().hex[:10]
+    name = f"{safe_stem}-{token}.wav"
     target = _safe_workspace_file(name, must_exist=False)
+    upload_temp = _safe_workspace_file(f".upload-{token}{suffix}", must_exist=False)
     total = 0
     try:
-        with target.open("xb") as output:
+        with upload_temp.open("xb") as output:
             while True:
                 chunk = await upload.read(CHUNK_SIZE)
                 if not chunk:
@@ -94,18 +101,29 @@ async def _save_upload(upload: UploadFile) -> dict:
                     raise HTTPException(status_code=413, detail="Upload exceeds the 500 MiB limit.")
                 output.write(chunk)
         if total == 0:
-            target.unlink(missing_ok=True)
-            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-        # Decode now so corrupt/non-audio WAV files fail during import, not later.
+            raise HTTPException(status_code=400, detail="Uploaded audio file is empty.")
+        if suffix == ".mp3":
+            decoded = miniaudio.decode_file(
+                str(upload_temp), output_format=miniaudio.SampleFormat.FLOAT32,
+                nchannels=2, sample_rate=44100,
+            )
+            pcm = np.asarray(decoded.samples, dtype=np.float32).reshape(-1, decoded.nchannels)
+            if len(pcm) < 2 or not np.isfinite(pcm).all():
+                raise ValueError("Decoded MP3 contains no valid audio samples.")
+            sf.write(str(target), pcm, int(decoded.sample_rate), subtype="PCM_24")
+        else:
+            upload_temp.replace(target)
         metadata = analyze_file(target)
-        return {"file": name, "original_name": original, "bytes": total, "analysis": metadata}
+        return {"file": name, "original_name": original, "bytes": total, "analysis": metadata,
+                "converted_from": suffix[1:] if suffix == ".mp3" else None}
     except HTTPException:
         target.unlink(missing_ok=True)
         raise
     except Exception as exc:
         target.unlink(missing_ok=True)
-        raise HTTPException(status_code=422, detail=f"Could not read a valid WAV file: {type(exc).__name__}: {exc}") from exc
+        raise HTTPException(status_code=422, detail=f"Could not decode this audio file: {type(exc).__name__}: {exc}") from exc
     finally:
+        upload_temp.unlink(missing_ok=True)
         await upload.close()
 
 
@@ -250,17 +268,12 @@ def render_timeline(request: AutomationRenderRequest) -> dict:
     """Render time-local built-in effects on one imported track; no cloud processing."""
     track_path = _safe_workspace_file(request.track_file)
     timeline = AutomationTimeline.model_validate_json(request.timeline_json)
-    if any(event.enabled and event.effect_kind == "vst3" for event in timeline.events):
-        raise HTTPException(
-            status_code=422,
-            detail="The browser timeline currently supports built-in effects only. Use the local MCP tool for inspected VST3 plugins.",
-        )
     output_name = f"VeryRare-Segment-{uuid.uuid4().hex[:10]}.wav"
     output_path = _safe_workspace_file(output_name, must_exist=False)
     try:
         report = render_automation_timeline(
             track_path, output_path, request.timeline_json, track_id=request.track_id,
-            allowed_plugin_paths=set(),
+            allowed_plugin_paths=set(scan_vst3_paths()),
         )
         return {
             "rendered": True,
@@ -272,6 +285,16 @@ def render_timeline(request: AutomationRenderRequest) -> dict:
         output_path.unlink(missing_ok=True)
         output_path.with_suffix(".automation-report.json").unlink(missing_ok=True)
         raise HTTPException(status_code=422, detail=f"Automation render failed: {type(exc).__name__}: {exc}") from exc
+
+
+@app.get("/api/plugins")
+def list_installed_plugins() -> dict:
+    """List VST3 plugins found in standard Windows VST3 locations; loading is separate."""
+    paths = scan_vst3_paths()
+    return {
+        "plugins": [{"path": path, "name": Path(path).stem, "discovered": True, "loaded": False} for path in paths],
+        "note": "Discovery does not guarantee compatibility. Only load trusted plugins; plugins run locally and are not sandboxed.",
+    }
 
 
 @app.get("/api/capabilities")
