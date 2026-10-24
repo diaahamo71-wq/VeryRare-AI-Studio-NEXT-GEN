@@ -480,13 +480,14 @@ function rebuildLiveGraph() {
       comp.connect(lowpass); lowpass.connect(convolver);
     } else comp.connect(convolver);
     convolver.connect(wet);
-  } else if (effect === "delay" || effect === "dreamcore") {
+  }
+  if (effect === "delay" || effect === "dreamcore") {
     const delay = liveNode(ctx.createDelay(1.5));
     delay.delayTime.value = Number($("delay-time")?.value || 260) / 1000;
     const feedback = liveNode(ctx.createGain());
     feedback.gain.value = Math.min(0.65, Number($("live-feedback").value) / 100);
     comp.connect(delay); delay.connect(feedback); feedback.connect(delay); delay.connect(wet);
-  } else if (effect !== "telephone") {
+  } else if (effect !== "telephone" && effect !== "reverb" && effect !== "dreamcore") {
     comp.connect(wet);
     if (effect === "clean") wet.gain.value = 0;
   }
