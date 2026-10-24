@@ -95,6 +95,7 @@ $("render-btn").addEventListener("click", async () => {
     const output = result.report.output;
     $("result-name").textContent = result.output_file;
     $("result-meta").textContent = output.duration_seconds + " sec · " + output.sample_rate_hz + " Hz · 24-bit PCM WAV";
+    $("reference-audio").src = result.reference_url;
     $("result-audio").src = result.audio_url;
     $("download-link").href = result.audio_url;
     $("download-link").download = result.output_file;
