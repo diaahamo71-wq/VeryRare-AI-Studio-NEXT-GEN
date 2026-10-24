@@ -79,6 +79,19 @@
           <div class="prompt-icon">✧</div><div class="prompt-copy"><h3>Production brief <span class="tag">AI PLAN · ADVISORY</span></h3><p>Describe the sound you want. The local-first planner can propose an effect plan; it does not yet execute plugin chains or change the mix controls automatically.</p><textarea id="production-brief" rows="2" maxlength="1200" placeholder="e.g. Keep the vocal soft and intimate, add a little dreamy space, and leave the consonants natural…"></textarea><div class="plan-actions"><label class="cloud-toggle"><input id="allow-cloud" type="checkbox"><span>Allow cloud text fallback <small>Only if local AI is unavailable; sends prompt text, never audio.</small></span></label><button id="plan-btn" class="button button-secondary" type="button">Create effect plan <span>✧</span></button></div><div id="plan-result" class="plan-result" hidden aria-live="polite"></div></div>
         </div>
 
+
+        <section class="live-preview-panel" aria-labelledby="live-preview-heading">
+          <div class="panel-heading"><div><h3 id="live-preview-heading">Realtime effect audition</h3><p>Play your selected file and hear changes immediately. Preview runs locally in your browser; it does not upload or overwrite audio.</p></div><span class="panel-symbol">◉</span></div>
+          <div class="live-preview-controls">
+            <label>Source track<select id="live-preview-track"><option value="vocal">Vocal file</option><option value="beat">Instrumental / beat</option></select></label>
+            <label>Live effect<select id="live-preview-effect"><option value="clean">Clean / bypass</option><option value="telephone">Otherworldly radio</option><option value="reverb">Dreamy reverb</option><option value="delay">Echo / delay</option><option value="dreamcore">Dreamcore space</option></select></label>
+            <label class="live-wet-control">Effect amount <output id="live-wet-out">35%</output><input id="live-wet" type="range" min="0" max="100" step="1" value="35"></label>
+            <label class="live-wet-control">Preview level <output id="live-level-out">0 dB</output><input id="live-level" type="range" min="-18" max="6" step="1" value="0"></label>
+          </div>
+          <div class="live-preview-player"><audio id="live-preview-audio" controls preload="metadata"></audio><span id="live-preview-status" class="muted">Choose a vocal or beat file above, then press play.</span></div>
+          <div class="live-preview-actions"><button id="live-preview-enable" class="button button-primary" type="button">Enable realtime effects</button><button id="live-preview-bypass" class="button button-secondary" type="button" disabled>Bypass effects</button><span class="muted">Browser effects are audition tools; installed VST3 plugins are not hosted in this live preview yet.</span></div>
+        </section>
+
         <section class="timeline-panel" aria-labelledby="timeline-heading">
           <div class="panel-heading"><div><h3 id="timeline-heading">Time-local vocal effects</h3><p>Apply an effect only between selected timestamps. This renders the selected track, not the full vocal/beat mix.</p></div><span class="panel-symbol">⌁</span></div>
           <div class="plugin-scan-row"><button id="scan-plugins-btn" class="button button-secondary" type="button">Scan installed VST3 plugins</button><span id="plugin-scan-status" class="muted">Valhalla and other installed VST3 effects can appear here.</span></div>
