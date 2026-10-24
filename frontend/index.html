@@ -39,7 +39,7 @@
         </div>
 
         <nav class="workflow-steps" aria-label="Studio workflow"><a class="workflow-step current" href="#source-tracks"><span>01</span><strong>Import</strong></a><a class="workflow-step" href="#mix-controls"><span>02</span><strong>Shape</strong></a><a class="workflow-step" href="#live-preview-heading"><span>03</span><strong>Audition</strong></a><a class="workflow-step" href="#timeline-heading"><span>04</span><strong>Time effects</strong></a><a class="workflow-step" href="#render-action"><span>05</span><strong>Render</strong></a></nav>
-        <div id="source-tracks" class="section-title"><div><span class="step">01</span><h2>Import your tracks</h2></div><span class="muted">Vocal + instrumental</span></div>
+        <div id="source-tracks" class="section-title"><div><span class="step">01</span><h2>Import your tracks</h2></div><span class="muted">Vocal + two alternative beats</span></div>
         <div class="source-grid">
           <label class="track-card" for="vocal-file">
             <div class="track-card-top"><span class="track-icon vocal-icon">♬</span><span class="track-badge">VOCAL</span><span class="file-state" id="vocal-state">Not loaded</span></div>
@@ -55,8 +55,16 @@
             <div class="track-bottom"><span>Choose WAV file</span><span class="plus">＋</span></div>
             <input id="beat-file" type="file" accept=".wav,.mp3,audio/wav,audio/mpeg" hidden>
           </label>
+          <label class="track-card" for="beat-b-file">
+            <div class="track-card-top"><span class="track-icon beat-icon">▤</span><span class="track-badge beat-badge">BEAT B</span><span class="file-state" id="beat-b-state">Not loaded</span></div>
+            <div class="track-main"><strong id="beat-b-name">Choose your second beat</strong><span id="beat-b-detail">Alternative instrumental for A/B comparison</span></div>
+            <div class="waveform beat-wave" aria-hidden="true"></div>
+            <div class="track-bottom"><span>Choose WAV / MP3 file</span><span class="plus">＋</span></div>
+            <input id="beat-b-file" type="file" accept=".wav,.mp3,audio/wav,audio/mpeg" hidden>
+          </label>
         </div>
-        <div class="import-row"><span class="privacy-inline"><span>✓</span> Files are processed locally; originals are never overwritten.</span><button id="import-btn" class="button button-secondary" disabled>Import tracks <span>↗</span></button></div>
+        <div class="import-row"><span class="privacy-inline"><span>✓</span> Vocal + both beats are imported locally; originals are never overwritten.</span><button id="import-btn" class="button button-secondary" disabled>Import 3 tracks <span>↗</span></button></div>
+        <div class="beat-choice-row"><label for="render-beat-choice">Beat used for the rendered mix</label><select id="render-beat-choice"><option value="beat">Beat A</option><option value="beat-b">Beat B</option></select><span class="muted">Choose one beat per render. Switch to the other to compare versions.</span></div>
 
         <div id="mix-controls" class="section-title mix-title"><div><span class="step">02</span><h2>Shape the mix</h2></div><span class="muted">Start subtle · compare by ear</span></div>
         <div class="mix-layout">
@@ -86,7 +94,7 @@
         <section class="live-preview-panel" aria-labelledby="live-preview-heading">
           <div class="panel-heading"><div><h3 id="live-preview-heading">Realtime effect audition</h3><p>Try one effect at a time. Compare the dry source with the processed sound before deciding. This audition is local to your browser.</p></div><span class="panel-symbol">◉</span></div>
           <div class="live-preview-controls">
-            <label>Source track<select id="live-preview-track"><option value="vocal">Vocal file</option><option value="beat">Instrumental / beat</option></select></label>
+            <label>Source track<select id="live-preview-track"><option value="vocal">Vocal file</option><option value="beat">Beat A</option><option value="beat-b">Beat B</option></select></label>
             <label>Live effect<select id="live-preview-effect"><option value="clean">Clean / bypass</option><option value="telephone">Otherworldly radio</option><option value="reverb">Dreamy reverb</option><option value="delay">Echo / delay</option><option value="dreamcore">Dreamcore space</option></select></label>
             <label class="live-wet-control">Effect amount <output id="live-wet-out">35%</output><input id="live-wet" type="range" min="0" max="100" step="1" value="35"></label>
             <label class="live-wet-control">Preview level <output id="live-level-out">0 dB</output><input id="live-level" type="range" min="-18" max="6" step="1" value="0"></label>
