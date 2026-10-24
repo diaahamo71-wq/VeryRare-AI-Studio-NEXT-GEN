@@ -36,6 +36,6 @@ Reference: [plugin87/ux-ui-agent-skills (XIAS)](https://github.com/plugin87/ux-u
 ## Known gaps in the first UI pass
 
 - This is a browser-based local UI served on loopback, not yet a packaged desktop executable.
-- No waveform analysis/visualization, undo stack, cancellation, streamed job progress, plugin GUI, automatic AI effect planning, Auto-Tune, harmonizer, or dereverb is implemented by the UI itself.
+- No waveform analysis/visualization, undo stack, cancellation, streamed job progress, plugin GUI, automatic plan execution, Auto-Tune, harmonizer, or dereverb is implemented by the UI itself.
 - The backend uses a conservative built-in DSP engine. Plugin hosting remains a separate experimental path and must be validated with each installed plugin.
 - Automated UI, accessibility, and Windows integration tests are still required; do not claim the release gates have passed until run.
