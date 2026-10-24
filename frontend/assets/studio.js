@@ -32,7 +32,7 @@ function updateActions() {
 }
 function showTrack(which, file) {
   $(which + "-name").textContent = file.name;
-  $(which + "-detail").textContent = (file.size / (1024 * 1024)).toFixed(2) + " MiB · WAV selected";
+  $(which + "-detail").textContent = (file.size / (1024 * 1024)).toFixed(2) + " MiB · audio selected";
   $(which + "-state").textContent = "Selected";
 }
 $("vocal-file").addEventListener("change", e => { if (e.target.files[0]) showTrack("vocal", e.target.files[0]); updateActions(); });
@@ -45,7 +45,7 @@ async function api(url, options = {}) {
 }
 $("import-btn").addEventListener("click", async () => {
   const button = $("import-btn");
-  button.disabled = true; button.textContent = "Importing…"; showMessage("Validating both WAV files on this computer…");
+  button.disabled = true; button.textContent = "Importing…"; showMessage("Validating WAV / MP3 files on this computer…");
   try {
     const body = new FormData();
     body.append("vocal", $("vocal-file").files[0]);
@@ -127,6 +127,27 @@ $("render-btn").addEventListener("click", async () => {
 });
 
 
+let discoveredPlugins = [];
+async function scanPlugins() {
+  const button = $("scan-plugins-btn");
+  const status = $("plugin-scan-status");
+  if (button) { button.disabled = true; button.textContent = "Scanning…"; }
+  try {
+    const data = await api("/api/plugins");
+    discoveredPlugins = Array.isArray(data.plugins) ? data.plugins : [];
+    const select = $("timeline-effect");
+    [...select.options].filter(option => option.value.startsWith("vst3::")).forEach(option => option.remove());
+    discoveredPlugins.forEach(plugin => {
+      const option = document.createElement("option");
+      option.value = "vst3::" + plugin.path;
+      option.textContent = "Plugin: " + plugin.name;
+      select.append(option);
+    });
+    if (status) status.textContent = discoveredPlugins.length ? discoveredPlugins.length + " VST3 plugin(s) found. Choose one from the Effect list." : "No VST3 plugins found in the standard Windows VST3 folder. Install the plugin first, then scan again.";
+  } catch (error) { if (status) status.textContent = "Plugin scan failed: " + error.message; }
+  finally { if (button) { button.disabled = false; button.textContent = "Scan installed VST3 plugins"; } }
+}
+if ($("scan-plugins-btn")) $("scan-plugins-btn").addEventListener("click", scanPlugins);
 function selectedTimelineTrack() {
   return $("timeline-track").value === "beat" ? state.beat : state.vocal;
 }
@@ -158,7 +179,7 @@ function renderTimelineEventList() {
     const row = document.createElement("div"); row.className = "timeline-event";
     const description = document.createElement("div");
     const title = document.createElement("strong");
-    title.textContent = ({builtin_telephone:"Telephone / radio",builtin_reverb:"Reverb",builtin_delay:"Delay / echo",builtin_eq:"EQ / filtered tone",builtin_compressor:"Compressor"}[event.effect_kind] || event.effect_kind);
+    title.textContent = event.effect_kind === "vst3" ? ("VST3 · " + (event.plugin_path || "plugin").split(/[\\/]/).pop().replace(/\\.vst3$/i, "")) : ({builtin_telephone:"Telephone / radio",builtin_reverb:"Reverb",builtin_delay:"Delay / echo",builtin_eq:"EQ / filtered tone",builtin_compressor:"Compressor"}[event.effect_kind] || event.effect_kind);
     const detail = document.createElement("p");
     detail.textContent = event.start_seconds.toFixed(2) + "–" + event.end_seconds.toFixed(2) + " sec · wet " + Math.round(event.wet * 100) + "% · fades " + event.fade_in_seconds + "/" + event.fade_out_seconds + " sec";
     description.append(title, detail);
@@ -197,13 +218,16 @@ $("add-event-btn").addEventListener("click", () => {
     showTimelineMessage("Check the timestamps and fades. End must be after start and within the selected track duration (" + duration.toFixed(2) + " sec).", "error");
     return;
   }
-  const effect = $("timeline-effect").value;
+  const effectSelection = $("timeline-effect").value;
+  const isVst3 = effectSelection.startsWith("vst3::");
+  const effect = isVst3 ? "vst3" : effectSelection;
+  const pluginPath = isVst3 ? effectSelection.slice(6) : null;
   let parameters = {};
   if (effect === "builtin_reverb") parameters = {room_size: 0.35, damping: 0.5, width: 1.0};
   if (effect === "builtin_delay") parameters = {delay_seconds: 0.28, feedback: 0.25};
   state.timelineEvents.push({
     event_id: timelineTrackId() + "-" + Date.now() + "-" + state.timelineEvents.length,
-    track_id: timelineTrackId(), effect_kind: effect,
+    track_id: timelineTrackId(), effect_kind: effect, plugin_path: pluginPath,
     start_seconds: start, end_seconds: end, wet,
     fade_in_seconds: fadeIn, fade_out_seconds: fadeOut,
     parameters, enabled: true, decision_source: "user"
@@ -337,6 +361,7 @@ document.querySelectorAll("[data-section]").forEach(button => button.addEventLis
   if (button.dataset.section === "activity") renderHistory();
   window.scrollTo({top:0, behavior:"smooth"});
 }));
+scanPlugins();
 api("/api/health").then(data => {
   $("health-text").textContent = "Local engine connected";
   if (data.cloud_audio_upload !== false) $("health-text").textContent = "Check privacy status";
