@@ -28,6 +28,7 @@ function updateActions() {
   const canImport = $("vocal-file").files.length > 0 && $("beat-file").files.length > 0;
   $("import-btn").disabled = !canImport;
   $("render-btn").disabled = !(state.vocal && state.beat);
+  $("smart-mix-btn").disabled = !(state.vocal && state.beat);
 }
 function showTrack(which, file) {
   $(which + "-name").textContent = file.name;
@@ -121,6 +122,50 @@ $("render-btn").addEventListener("click", async () => {
     showMessage(error.message, "error");
   } finally {
     button.disabled = false; button.innerHTML = '<span class="button-star">✦</span> Render mix <span class="button-arrow">→</span>';
+    updateActions();
+  }
+});
+
+$("smart-mix-btn").addEventListener("click", async () => {
+  if (!state.vocal || !state.beat) return;
+  const button = $("smart-mix-btn");
+  button.disabled = true;
+  button.textContent = "Analyzing levels…";
+  showMessage("Measuring both WAV files locally and building a conservative, editable starting point.");
+  try {
+    const result = await api("/api/smart-mix", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        vocal_file: state.vocal.file,
+        beat_file: state.beat.file,
+        brief: $("production-brief").value.trim()
+      })
+    });
+    const s = result.settings || {};
+    const mapping = {
+      "vocal-gain": s.vocal_gain_db,
+      "beat-gain": s.instrumental_gain_db,
+      highpass: s.vocal_highpass_hz,
+      presence: s.vocal_presence_db,
+      compression: s.compression_ratio,
+      threshold: s.compression_threshold_db,
+      reverb: Math.round((s.reverb_mix || 0) * 100),
+      delay: Math.round((s.delay_mix || 0) * 100),
+      "delay-time": s.delay_ms,
+      ceiling: s.master_peak_dbfs
+    };
+    Object.entries(mapping).forEach(([id, value]) => {
+      if (value === undefined || value === null || !$(id)) return;
+      $(id).value = String(value);
+      $(id).dispatchEvent(new Event("input", {bubbles: true}));
+    });
+    const details = (result.reasons || []).join(" ");
+    showMessage("Local smart starting point applied to the mix controls. " + details + " Listen and adjust before exporting.", "success");
+  } catch (error) {
+    showMessage(error.message, "error");
+  } finally {
+    button.innerHTML = 'Suggest local mix settings <span>↗</span>';
     updateActions();
   }
 });
