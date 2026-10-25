@@ -10,7 +10,7 @@ import os
 import re
 import uuid
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.audio_engine import MixSettings, analyze_file, mix_tracks
 from app.smart_engine import recommend_mix
-from app.ai_engineer import plan_ai_mix
+from app.ai_engineer import plan_ai_mix, plan_ai_mix_cloud
 
 ROOT = Path(__file__).resolve().parents[1]
 UI_DIR = ROOT / "frontend"
@@ -45,6 +45,7 @@ class SmartMixRequest(BaseModel):
     vocal_file: str = Field(min_length=1, max_length=200)
     beat_file: str = Field(min_length=1, max_length=200)
     brief: str = Field(default="", max_length=1200)
+    mode: Literal["local", "cloud"] = "local"
 
     @field_validator("vocal_file", "beat_file")
     @classmethod
@@ -247,13 +248,15 @@ def plan_effects(request: PlanRequest) -> dict:
 
 @app.post("/api/ai-engineer")
 def ai_engineer(request: SmartMixRequest) -> dict:
-    """Ask a local pretrained LLM to plan bounded settings for the real DSP renderer."""
+    """Plan bounded mix settings locally or through explicit cloud text/measurement processing."""
     vocal_path = _safe_workspace_file(request.vocal_file)
     beat_path = _safe_workspace_file(request.beat_file)
     try:
+        if request.mode == "cloud":
+            return plan_ai_mix_cloud(vocal_path, beat_path, request.brief)
         return plan_ai_mix(vocal_path, beat_path, request.brief)
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"AI engineer unavailable: {type(exc).__name__}: {exc}") from exc
+        raise HTTPException(status_code=503, detail=f"AI engineer ({request.mode}) unavailable: {type(exc).__name__}: {exc}") from exc
 
 
 @app.post("/api/smart-mix")
