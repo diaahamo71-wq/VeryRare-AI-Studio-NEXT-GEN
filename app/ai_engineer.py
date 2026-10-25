@@ -149,10 +149,10 @@ def plan_ai_mix(vocal_path: str | Path, beat_path: str | Path, brief: str) -> di
 
 def plan_ai_mix_cloud(vocal_path: str | Path, beat_path: str | Path, brief: str) -> dict[str, Any]:
     """Use Gemini to plan a mix from the brief and measurements; audio bytes stay local."""
-    key = os.environ.get("GEMINI_API_KEY")
+    key = os.environ.get("GROQ_API_KEY")
     if not key:
-        raise RuntimeError("Cloud AI needs GEMINI_API_KEY set in the environment; the key is never stored in the repository.")
-    model = os.environ.get("VERYRARE_CLOUD_MIX_MODEL", "gemini-3.5-flash-lite")
+        raise RuntimeError("Cloud AI needs GROQ_API_KEY set in the environment; the key is never stored in the repository.")
+    model = os.environ.get("VERYRARE_CLOUD_MIX_MODEL", "openai/gpt-oss-120b")
     measurements = {
         "vocal": analyze_file(vocal_path),
         "instrumental": analyze_file(beat_path),
@@ -167,32 +167,40 @@ def plan_ai_mix_cloud(vocal_path: str | Path, beat_path: str | Path, brief: str)
         "effects, align timing or perform true-peak/LUFS mastering. Explain decisions briefly."
     )
     body = {
-        "system_instruction": {"parts": [{"text": system_prompt}]},
-        "contents": [{"role": "user", "parts": [{"text": json.dumps({
-            "creative_brief": brief.strip(),
-            "objective_measurements": measurements,
-            "task": "Plan a conservative starting mix for the actual local DSP renderer.",
-        }, ensure_ascii=False)}]}],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "responseJsonSchema": _SETTINGS_SCHEMA,
-            "temperature": 0,
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": json.dumps({
+                "creative_brief": brief.strip(),
+                "objective_measurements": measurements,
+                "task": "Plan a conservative starting mix for the actual local DSP renderer.",
+            }, ensure_ascii=False)},
+        ],
+        "temperature": 0,
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "veryrare_mix_plan",
+                "strict": True,
+                "schema": _SETTINGS_SCHEMA,
+            },
         },
     }
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    url = "https://api.groq.com/openai/v1/chat/completions"
     request = urllib.request.Request(
         url, data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json", "x-goog-api-key": key}, method="POST",
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"}, method="POST",
     )
     try:
         with urllib.request.urlopen(request, timeout=60) as response:
             raw = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        raise RuntimeError(f"Cloud AI request failed with HTTP {exc.code}; check API key, model access and quota.") from exc
+        detail = exc.read().decode("utf-8", errors="replace")[:500]
+        raise RuntimeError(f"Groq cloud AI request failed with HTTP {exc.code}; check API key, model access and quota. {detail}") from exc
     except urllib.error.URLError as exc:
         raise RuntimeError("Could not reach the cloud AI service. Check internet access and try again.") from exc
     try:
-        candidate = json.loads(raw["candidates"][0]["content"]["parts"][0]["text"])
+        candidate = json.loads(raw["choices"][0]["message"]["content"])
     except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
         raise RuntimeError("Cloud AI returned invalid structured output; no mix settings were applied.") from exc
     if not isinstance(candidate, dict):
@@ -208,7 +216,7 @@ def plan_ai_mix_cloud(vocal_path: str | Path, beat_path: str | Path, brief: str)
         "measurements": measurements,
         "executed": False,
         "execution_note": (
-            "Only the brief and numeric measurements were sent to Gemini; audio files remained local. "
+            "Only the brief and numeric measurements were sent to Groq; audio files remained local. "
             "The validated settings are applied by the local DSP renderer. The cloud model did not hear the tracks."
         ),
     }
