@@ -24,7 +24,7 @@ pip install -r requirements.txt
 python -m uvicorn app.web_app:app --host 127.0.0.1 --port 8765
 ```
 
-Open **http://127.0.0.1:8765** in Chrome or Edge. For local AI, install Ollama, then run `ollama pull qwen3:4b-instruct` once; set `VERYRARE_LOCAL_MODEL` to change it. For cloud AI, create a Groq API key and set it only in your local terminal environment as `GROQ_API_KEY` before starting the app; optionally set `VERYRARE_CLOUD_MIX_MODEL` to choose another compatible Gemini model. Never commit API keys. Tick **Use cloud AI for mix plan** to opt in. That sends the production brief and numeric measurements, not the audio files. The server command binds to loopback; do not expose the development server to your network or the public internet.
+Open **http://127.0.0.1:8765** in Chrome or Edge. For local AI, install Ollama, then run `ollama pull qwen3:4b-instruct` once; set `VERYRARE_LOCAL_MODEL` to change it. For cloud AI, create a Groq API key and set it only in your local terminal environment as `GROQ_API_KEY` before starting the app; optionally set `VERYRARE_CLOUD_MIX_MODEL` to choose another supported Groq model. Never commit API keys. Tick **Use cloud AI for mix plan** to opt in. That sends the production brief and numeric measurements, not the audio files. The server command binds to loopback; do not expose the development server to your network or the public internet.
 
 Default audio workspace: `workspace/` inside the repository. To use another folder, set `VERYRARE_AUDIO_ROOT` before starting the server. The UI accepts WAV files up to 500 MiB each. Source files are copied into the workspace; renders use unique names and do not overwrite imported files.
 
@@ -39,7 +39,7 @@ Default audio workspace: `workspace/` inside the repository. To use another fold
 
 ## Privacy and file safety
 
-The audio DSP render stays local. Cloud AI mode sends the production brief and numeric measurements to Gemini but does not upload the source WAVs. Use cloud mode only if you agree to send that text/metadata to the provider. Keep API keys in environment variables, never in source control. The local server should stay bound to 127.0.0.1.
+The audio DSP render stays local. Cloud AI mode sends the production brief and numeric measurements to Groq but does not upload the source WAVs. Use cloud mode only if you agree to send that text/metadata to the provider. Keep API keys in environment variables, never in source control. The local server should stay bound to 127.0.0.1.
 
 ## XIAS / UI quality
 
