@@ -177,7 +177,7 @@ $("ai-engineer-btn").addEventListener("click", async () => {
   button.disabled = true;
   button.textContent = "AI analyzing and planning…";
   const cloudMode = $("cloud-ai-engineer").checked;
-  showMessage(cloudMode ? "Cloud AI selected: sending the brief and numeric measurements to Groq. WAV audio stays on this computer." : "The local pretrained AI is reading your brief and objective measurements. Audio stays on this computer.");
+  showMessage(cloudMode ? "Cloud AI selected: sending the brief and numeric measurements to OpenRouter. WAV audio stays on this computer." : "The local pretrained AI is reading your brief and objective measurements. Audio stays on this computer.");
   try {
     const result = await api("/api/ai-engineer", {
       method: "POST",
