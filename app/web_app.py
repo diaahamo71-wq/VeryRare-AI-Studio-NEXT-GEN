@@ -230,7 +230,7 @@ def plan_effects(request: PlanRequest) -> dict:
     config = AgentConfig(
         mode="auto",
         local_model=os.environ.get("VERYRARE_LOCAL_MODEL", "gemma3:4b"),
-        cloud_model=os.environ.get("VERYRARE_CLOUD_MODEL", "gemini-2.5-flash"),
+        cloud_model=os.environ.get("VERYRARE_CLOUD_MODEL", "openrouter/free"),
         allow_cloud=request.allow_cloud_fallback,
     )
     try:
