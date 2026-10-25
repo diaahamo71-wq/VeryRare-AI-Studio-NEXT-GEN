@@ -176,7 +176,8 @@ $("ai-engineer-btn").addEventListener("click", async () => {
   const button = $("ai-engineer-btn");
   button.disabled = true;
   button.textContent = "AI analyzing and planning…";
-  showMessage("The local pretrained AI is reading your brief and objective measurements. Audio stays on this computer.");
+  const cloudMode = $("cloud-ai-engineer").checked;
+  showMessage(cloudMode ? "Cloud AI selected: sending the brief and numeric measurements to Gemini. WAV audio stays on this computer." : "The local pretrained AI is reading your brief and objective measurements. Audio stays on this computer.");
   try {
     const result = await api("/api/ai-engineer", {
       method: "POST",
@@ -208,7 +209,7 @@ $("ai-engineer-btn").addEventListener("click", async () => {
     });
     const decisions = (result.decisions || []).join(" ");
     const warnings = (result.warnings || []).join(" ");
-    showMessage("AI plan ready (" + result.model + "). " + result.summary + " " + decisions + (warnings ? " Notes: " + warnings : "") + " Starting the actual local DSP render now.", "success");
+    showMessage("AI plan ready (" + result.mode + " · " + result.model + "). " + result.summary + " " + decisions + (warnings ? " Notes: " + warnings : "") + " Starting the actual local DSP render now.", "success");
     button.textContent = "AI plan ready · Rendering…";
     $("render-btn").click();
   } catch (error) {
