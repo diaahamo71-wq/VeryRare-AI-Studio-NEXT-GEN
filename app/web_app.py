@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.audio_engine import MixSettings, analyze_file, mix_tracks
 from app.smart_engine import recommend_mix
+from app.ai_engineer import plan_ai_mix
 
 ROOT = Path(__file__).resolve().parents[1]
 UI_DIR = ROOT / "frontend"
@@ -242,6 +243,17 @@ def plan_effects(request: PlanRequest) -> dict:
         "plan": plan,
         "notice": "Advisory plan only. No audio was uploaded and no effects were executed by this endpoint.",
     }
+
+
+@app.post("/api/ai-engineer")
+def ai_engineer(request: SmartMixRequest) -> dict:
+    """Ask a local pretrained LLM to plan bounded settings for the real DSP renderer."""
+    vocal_path = _safe_workspace_file(request.vocal_file)
+    beat_path = _safe_workspace_file(request.beat_file)
+    try:
+        return plan_ai_mix(vocal_path, beat_path, request.brief)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"AI engineer unavailable: {type(exc).__name__}: {exc}") from exc
 
 
 @app.post("/api/smart-mix")
