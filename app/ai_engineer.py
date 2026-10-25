@@ -145,3 +145,70 @@ def plan_ai_mix(vocal_path: str | Path, beat_path: str | Path, brief: str) -> di
             "to the real DSP renderer; the model itself does not process audio samples."
         ),
     }
+
+
+def plan_ai_mix_cloud(vocal_path: str | Path, beat_path: str | Path, brief: str) -> dict[str, Any]:
+    """Use Gemini to plan a mix from the brief and measurements; audio bytes stay local."""
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        raise RuntimeError("Cloud AI needs GEMINI_API_KEY set in the environment; the key is never stored in the repository.")
+    model = os.environ.get("VERYRARE_CLOUD_MIX_MODEL", "gemini-3.5-flash-lite")
+    measurements = {
+        "vocal": analyze_file(vocal_path),
+        "instrumental": analyze_file(beat_path),
+    }
+    system_prompt = (
+        "You are the cautious mix engineer for VeryRare Studio. Use only the creative brief "
+        "and objective WAV measurements provided. You have NOT heard the audio. Return one JSON "
+        "object matching the supplied schema. Choose conservative settings, preserve an intimate "
+        "natural vocal, and do not add effects unless requested. Dreamcore may justify subtle "
+        "ambience. Available DSP: gain, high-pass, presence EQ, simple compression, short-tap "
+        "reverb, delay and sample-peak ceiling. Do not claim to fix artifacts, restore source "
+        "effects, align timing or perform true-peak/LUFS mastering. Explain decisions briefly."
+    )
+    body = {
+        "system_instruction": {"parts": [{"text": system_prompt}]},
+        "contents": [{"role": "user", "parts": [{"text": json.dumps({
+            "creative_brief": brief.strip(),
+            "objective_measurements": measurements,
+            "task": "Plan a conservative starting mix for the actual local DSP renderer.",
+        }, ensure_ascii=False)}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseJsonSchema": _SETTINGS_SCHEMA,
+            "temperature": 0,
+        },
+    }
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+    request = urllib.request.Request(
+        url, data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"}, method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"Cloud AI request failed with HTTP {exc.code}; check API key, model access and quota.") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError("Could not reach the cloud AI service. Check internet access and try again.") from exc
+    try:
+        candidate = json.loads(raw["candidates"][0]["content"]["parts"][0]["text"])
+    except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+        raise RuntimeError("Cloud AI returned invalid structured output; no mix settings were applied.") from exc
+    if not isinstance(candidate, dict):
+        raise RuntimeError("Cloud AI response was not a settings object.")
+    settings = _bounded_settings(candidate)
+    return {
+        "mode": "cloud_pretrained_llm",
+        "model": model,
+        "summary": str(candidate.get("summary", "Cloud AI mix plan")),
+        "settings": settings,
+        "decisions": [str(item) for item in candidate.get("decisions", [])][:12],
+        "warnings": [str(item) for item in candidate.get("warnings", [])][:12],
+        "measurements": measurements,
+        "executed": False,
+        "execution_note": (
+            "Only the brief and numeric measurements were sent to Gemini; audio files remained local. "
+            "The validated settings are applied by the local DSP renderer. The cloud model did not hear the tracks."
+        ),
+    }
