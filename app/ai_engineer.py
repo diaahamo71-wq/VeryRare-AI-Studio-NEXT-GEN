@@ -179,10 +179,10 @@ def plan_ai_mix_cloud(vocal_path: str | Path, beat_path: str | Path, brief: str)
             "temperature": 0,
         },
     }
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     request = urllib.request.Request(
         url, data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json"}, method="POST",
+        headers={"Content-Type": "application/json", "x-goog-api-key": key}, method="POST",
     )
     try:
         with urllib.request.urlopen(request, timeout=60) as response:
