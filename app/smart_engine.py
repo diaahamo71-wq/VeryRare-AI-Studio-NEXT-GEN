@@ -8,9 +8,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-import soundfile as sf
-
 from app.audio_engine import MixSettings, analyze_file
 
 
