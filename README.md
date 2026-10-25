@@ -7,7 +7,7 @@ A local-first audio engineering studio for already-converted vocal WAVs and inst
 - Local browser UI served by FastAPI on loopback: import WAVs, inspect basic measurements, adjust the built-in DSP controls, render a new 24-bit PCM WAV, play/download it, and inspect the measurement report.
 - Built-in deterministic DSP: high-pass, presence EQ, simple compression, short-tap room reverb, delay, track gain and a sample-peak ceiling.
 - Experimental Pedalboard VST3 adapter and sequential effect-chain tools. Compatibility is plugin-specific and has not yet been verified against the user's Windows plugins.
-- Local stdio MCP server for compatible MCP clients; optional text-only planner. The UI can request an advisory plan from the local Ollama model first; cloud fallback is a separate explicit checkbox and sends prompt text only. Suggested plans do not execute effects.
+- Local stdio MCP server for compatible MCP clients; optional text-only planner. The UI includes a guarded **AI Engineer · Plan and mix** action that asks a locally installed pretrained Ollama model to interpret the brief plus objective file measurements, validates every proposed DSP value against strict ranges, then passes those settings to the actual built-in renderer. The model does not receive raw audio and is not claimed to have listened to it. If Ollama/model is unavailable, the action fails visibly; it does not silently fall back to heuristic/random settings. Optional cloud text planning remains a separate explicit opt-in.
 - XIAS-inspired UI quality guide: `docs/XIAS_UI_GUIDELINES.md`.
 
 ## Windows 11 quick start
@@ -24,7 +24,7 @@ pip install -r requirements.txt
 python -m uvicorn app.web_app:app --host 127.0.0.1 --port 8765
 ```
 
-Open **http://127.0.0.1:8765** in Chrome or Edge. The server command binds to loopback, so it is intended for this computer only. Keep that host setting; do not expose the development server to your network or the public internet.
+Open **http://127.0.0.1:8765** in Chrome or Edge. For the local AI Engineer, install Ollama, then run `ollama pull qwen3:4b-instruct` once. Start Ollama before using the AI Engineer button. The default model can be changed with `VERYRARE_LOCAL_MODEL`. The server command binds to loopback, so it is intended for this computer only. Keep that host setting; do not expose the development server to your network or the public internet.
 
 Default audio workspace: `workspace/` inside the repository. To use another folder, set `VERYRARE_AUDIO_ROOT` before starting the server. The UI accepts WAV files up to 500 MiB each. Source files are copied into the workspace; renders use unique names and do not overwrite imported files.
 
