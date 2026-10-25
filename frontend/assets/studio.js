@@ -184,7 +184,8 @@ $("ai-engineer-btn").addEventListener("click", async () => {
       body: JSON.stringify({
         vocal_file: state.vocal.file,
         beat_file: state.beat.file,
-        brief: $("production-brief").value.trim()
+        brief: $("production-brief").value.trim(),
+        mode: $("cloud-ai-engineer").checked ? "cloud" : "local"
       })
     });
     const s = result.settings || {};
