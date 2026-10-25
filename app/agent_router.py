@@ -104,10 +104,36 @@ def _cloud_plan(prompt: str, config: AgentConfig) -> dict[str, Any]:
     except urllib.error.URLError as exc:
         raise RuntimeError("Could not reach OpenRouter. Check internet access and try again.") from exc
     try:
-        content = payload["choices"][0]["message"]["content"]
-        result = json.loads(content)
-    except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
-        raise RuntimeError("OpenRouter returned invalid JSON; no plan was accepted.") from exc
+        message = payload["choices"][0]["message"]
+        content = message.get("content", "")
+        # Some OpenRouter free models return content as text blocks or wrap JSON
+        # in Markdown fences even when JSON mode is requested.
+        if isinstance(content, list):
+            content = "\\n".join(
+                str(part.get("text", "")) if isinstance(part, dict) else str(part)
+                for part in content
+            )
+        if not isinstance(content, str) or not content.strip():
+            reason = message.get("refusal") or payload.get("error") or "empty response"
+            raise ValueError(str(reason)[:300])
+        cleaned = content.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\\n", 1)[-1]
+            if cleaned.rstrip().endswith("```"):
+                cleaned = cleaned.rstrip()[:-3].strip()
+        try:
+            result = json.loads(cleaned)
+        except json.JSONDecodeError:
+            # Recover a JSON object if the model added brief prose around it.
+            start, end = cleaned.find("{"), cleaned.rfind("}")
+            if start < 0 or end <= start:
+                raise
+            result = json.loads(cleaned[start:end + 1])
+    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            f"OpenRouter response could not be parsed as JSON ({str(exc)[:240]}). "
+            "Try another OpenRouter model if this persists."
+        ) from exc
     if not isinstance(result, dict):
         raise RuntimeError("OpenRouter response was not a JSON object.")
     result["agent"] = "cloud"
