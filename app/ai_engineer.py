@@ -148,11 +148,11 @@ def plan_ai_mix(vocal_path: str | Path, beat_path: str | Path, brief: str) -> di
 
 
 def plan_ai_mix_cloud(vocal_path: str | Path, beat_path: str | Path, brief: str) -> dict[str, Any]:
-    """Use Gemini to plan a mix from the brief and measurements; audio bytes stay local."""
-    key = os.environ.get("GROQ_API_KEY")
+    """Use OpenRouter to plan a mix from the brief and measurements; audio bytes stay local."""
+    key = os.environ.get("OPENROUTER_API_KEY")
     if not key:
-        raise RuntimeError("Cloud AI needs GROQ_API_KEY set in the environment; the key is never stored in the repository.")
-    model = os.environ.get("VERYRARE_CLOUD_MIX_MODEL", "openai/gpt-oss-120b")
+        raise RuntimeError("Cloud AI needs OPENROUTER_API_KEY set in the environment; the key is never stored in the repository.")
+    model = os.environ.get("VERYRARE_CLOUD_MIX_MODEL", "openrouter/free")
     measurements = {
         "vocal": analyze_file(vocal_path),
         "instrumental": analyze_file(beat_path),
@@ -186,17 +186,22 @@ def plan_ai_mix_cloud(vocal_path: str | Path, beat_path: str | Path, brief: str)
             },
         },
     }
-    url = "https://api.groq.com/openai/v1/chat/completions"
+    url = "https://openrouter.ai/api/v1/chat/completions"
     request = urllib.request.Request(
         url, data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"}, method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {key}",
+            "HTTP-Referer": "https://github.com/diaahamo71-wq/VeryRare-AI-Studio-NEXT-GEN",
+            "X-Title": "VeryRare AI Studio",
+        }, method="POST",
     )
     try:
         with urllib.request.urlopen(request, timeout=60) as response:
             raw = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:500]
-        raise RuntimeError(f"Groq cloud AI request failed with HTTP {exc.code}; check API key, model access and quota. {detail}") from exc
+        raise RuntimeError(f"OpenRouter cloud AI request failed with HTTP {exc.code}; check API key, model access and quota. {detail}") from exc
     except urllib.error.URLError as exc:
         raise RuntimeError("Could not reach the cloud AI service. Check internet access and try again.") from exc
     try:
@@ -216,7 +221,7 @@ def plan_ai_mix_cloud(vocal_path: str | Path, beat_path: str | Path, brief: str)
         "measurements": measurements,
         "executed": False,
         "execution_note": (
-            "Only the brief and numeric measurements were sent to Groq; audio files remained local. "
+            "Only the brief and numeric measurements were sent to OpenRouter; audio files remained local. "
             "The validated settings are applied by the local DSP renderer. The cloud model did not hear the tracks."
         ),
     }
