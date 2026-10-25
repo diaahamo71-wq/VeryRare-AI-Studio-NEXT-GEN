@@ -245,7 +245,7 @@ def plan_effects(request: PlanRequest) -> dict:
 
 
 @app.post("/api/smart-mix")
-def smart_mix(request: "SmartMixRequest") -> dict:
+def smart_mix(request: SmartMixRequest) -> dict:
     """Create an editable local recommendation from measured levels and a creative brief."""
     vocal_path = _safe_workspace_file(request.vocal_file)
     beat_path = _safe_workspace_file(request.beat_file)
