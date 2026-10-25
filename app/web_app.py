@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from app.audio_engine import MixSettings, analyze_file, mix_tracks
+from app.smart_engine import recommend_mix
 
 ROOT = Path(__file__).resolve().parents[1]
 UI_DIR = ROOT / "frontend"
@@ -37,6 +38,19 @@ app.mount("/assets", StaticFiles(directory=str(UI_DIR / "assets"), check_dir=Fal
 class PlanRequest(BaseModel):
     prompt: str = Field(min_length=3, max_length=1200)
     allow_cloud_fallback: bool = False
+
+
+class SmartMixRequest(BaseModel):
+    vocal_file: str = Field(min_length=1, max_length=200)
+    beat_file: str = Field(min_length=1, max_length=200)
+    brief: str = Field(default="", max_length=1200)
+
+    @field_validator("vocal_file", "beat_file")
+    @classmethod
+    def validate_workspace_filename(cls, value: str) -> str:
+        if Path(value).name != value or value in {".", ".."} or "/" in value or chr(92) in value:
+            raise ValueError("Audio references must be workspace file names, not filesystem paths.")
+        return value
 
 
 class MixRequest(BaseModel):
@@ -228,6 +242,17 @@ def plan_effects(request: PlanRequest) -> dict:
         "plan": plan,
         "notice": "Advisory plan only. No audio was uploaded and no effects were executed by this endpoint.",
     }
+
+
+@app.post("/api/smart-mix")
+def smart_mix(request: "SmartMixRequest") -> dict:
+    """Create an editable local recommendation from measured levels and a creative brief."""
+    vocal_path = _safe_workspace_file(request.vocal_file)
+    beat_path = _safe_workspace_file(request.beat_file)
+    try:
+        return recommend_mix(vocal_path, beat_path, request.brief)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Smart recommendation failed: {type(exc).__name__}: {exc}") from exc
 
 
 @app.get("/api/capabilities")
