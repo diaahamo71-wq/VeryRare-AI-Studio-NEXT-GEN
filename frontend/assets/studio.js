@@ -29,6 +29,7 @@ function updateActions() {
   $("import-btn").disabled = !canImport;
   $("render-btn").disabled = !(state.vocal && state.beat);
   $("smart-mix-btn").disabled = !(state.vocal && state.beat);
+  $("ai-engineer-btn").disabled = !(state.vocal && state.beat);
 }
 function showTrack(which, file) {
   $(which + "-name").textContent = file.name;
@@ -166,6 +167,53 @@ $("smart-mix-btn").addEventListener("click", async () => {
     showMessage(error.message, "error");
   } finally {
     button.innerHTML = 'Suggest local mix settings <span>↗</span>';
+    updateActions();
+  }
+});
+
+$("ai-engineer-btn").addEventListener("click", async () => {
+  if (!state.vocal || !state.beat) return;
+  const button = $("ai-engineer-btn");
+  button.disabled = true;
+  button.textContent = "AI analyzing and planning…";
+  showMessage("The local pretrained AI is reading your brief and objective measurements. Audio stays on this computer.");
+  try {
+    const result = await api("/api/ai-engineer", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        vocal_file: state.vocal.file,
+        beat_file: state.beat.file,
+        brief: $("production-brief").value.trim()
+      })
+    });
+    const s = result.settings || {};
+    const mapping = {
+      "vocal-gain": s.vocal_gain_db,
+      "beat-gain": s.instrumental_gain_db,
+      highpass: s.vocal_highpass_hz,
+      presence: s.vocal_presence_db,
+      compression: s.compression_ratio,
+      threshold: s.compression_threshold_db,
+      reverb: Math.round(s.reverb_mix * 100),
+      delay: Math.round(s.delay_mix * 100),
+      "delay-time": s.delay_ms,
+      ceiling: s.master_peak_dbfs
+    };
+    Object.entries(mapping).forEach(([id, value]) => {
+      if (value === undefined || value === null || !$(id)) return;
+      $(id).value = String(value);
+      $(id).dispatchEvent(new Event("input", {bubbles: true}));
+    });
+    const decisions = (result.decisions || []).join(" ");
+    const warnings = (result.warnings || []).join(" ");
+    showMessage("AI plan ready (" + result.model + "). " + result.summary + " " + decisions + (warnings ? " Notes: " + warnings : "") + " Starting the actual local DSP render now.", "success");
+    button.textContent = "AI plan ready · Rendering…";
+    $("render-btn").click();
+  } catch (error) {
+    showMessage(error.message + " The app did not silently substitute random or heuristic settings.", "error");
+  } finally {
+    button.innerHTML = 'AI Engineer · Plan and mix <span>✦</span>';
     updateActions();
   }
 });
